@@ -1,23 +1,46 @@
 from __future__ import annotations
 import json
+import os
 import sqlite3
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 from core.schema import CUCVitals, DeltaFragment
 
 
 class LumenLedger:
-    """Append-only SQLite ledger preserving Historical Continuity (H)."""
+    """Append-only SQLite / Turso cloud ledger preserving Historical Continuity (H)."""
 
-    def __init__(self, db_path: str | Path = "lumen_ledger.sqlite") -> None:
+    def __init__(
+        self,
+        db_path: str | Path = "lumen_ledger.sqlite",
+        turso_url: str | None = None,
+        turso_token: str | None = None,
+    ) -> None:
         self.db_path = str(db_path)
+        # Only use Turso cloud when db_path is the default production path or explicitly passed
+        use_env_turso = str(db_path) == "lumen_ledger.sqlite"
+        self.turso_url = turso_url or (os.environ.get("TURSO_DATABASE_URL") if use_env_turso else None)
+        self.turso_token = turso_token or (os.environ.get("TURSO_AUTH_TOKEN") if use_env_turso else None)
         self._init_db()
 
-    def _connect(self) -> sqlite3.Connection:
+    def _connect(self) -> Any:
+        if self.turso_url and self.turso_token:
+            import libsql_experimental as libsql
+            return libsql.connect(
+                self.db_path,
+                sync_url=self.turso_url,
+                auth_token=self.turso_token,
+            )
         return sqlite3.connect(self.db_path)
 
+    def _sync_if_cloud(self, conn: Any) -> None:
+        if hasattr(conn, "sync"):
+            conn.sync()
+
     def _init_db(self) -> None:
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
+            self._sync_if_cloud(conn)
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS delta_fragments (
@@ -32,11 +55,17 @@ class LumenLedger:
                 )
                 """
             )
+            conn.commit()
+            self._sync_if_cloud(conn)
+        finally:
+            conn.close()
 
     def append(self, fragment: DeltaFragment) -> DeltaFragment:
-        """Commit a verified Delta Fragment to the ledger."""
+        """Commit a verified Delta Fragment permanently to the ledger."""
         payload = fragment.to_dict()
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
+            self._sync_if_cloud(conn)
             conn.execute(
                 """
                 INSERT INTO delta_fragments (
@@ -54,26 +83,38 @@ class LumenLedger:
                     json.dumps(payload),
                 ),
             )
+            conn.commit()
+            self._sync_if_cloud(conn)
+        finally:
+            conn.close()
         return fragment
 
     def latest(self) -> Optional[DeltaFragment]:
         """Retrieve the most recent Delta Fragment to anchor cycle t."""
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
+            self._sync_if_cloud(conn)
             row = conn.execute(
                 "SELECT payload_json FROM delta_fragments ORDER BY seq DESC LIMIT 1"
             ).fetchone()
+        finally:
+            conn.close()
         if not row:
             return None
-        return self._deserialize(json.loads(row[0]))
+        return self._deserialize(json.loads(row))
 
     def recent(self, limit: int = 5) -> List[DeltaFragment]:
         """Fetch the last N Delta Fragments in chronological order."""
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
+            self._sync_if_cloud(conn)
             rows = conn.execute(
                 "SELECT payload_json FROM delta_fragments ORDER BY seq DESC LIMIT ?",
                 (limit,),
             ).fetchall()
-        return [self._deserialize(json.loads(r[0])) for r in reversed(rows)]
+        finally:
+            conn.close()
+        return [self._deserialize(json.loads(r)) for r in reversed(rows)]
 
     @staticmethod
     def _deserialize(data: dict) -> DeltaFragment:
