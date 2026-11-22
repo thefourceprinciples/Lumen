@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Callable, Dict, Any, List
+from pathlib import Path
+from typing import Callable, Dict, Any
 from core.schema import CUCVitals, ConstraintSet, DeltaFragment
 from core.regulator import evaluate_fource, RegulatorDirective
 from core.ledger import LumenLedger
@@ -24,10 +25,19 @@ class LumenKernel:
         ledger: LumenLedger,
         constraints: ConstraintSet | None = None,
         cognitive_fn: CognitiveFn | None = None,
+        canon_path: str | Path = "docs/CANON_CORE.md",
     ) -> None:
         self.ledger = ledger
         self.constraints = constraints or ConstraintSet()
         self.cognitive_fn = cognitive_fn or self._default_noop_cognizer
+        self.canon_text = self._load_canon(canon_path)
+
+    @staticmethod
+    def _load_canon(canon_path: str | Path) -> str:
+        path = Path(canon_path)
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+        return ""
 
     def step(
         self,
@@ -35,10 +45,11 @@ class LumenKernel:
         vitals: CUCVitals,
         tokens_used_ratio: float = 0.0,
     ) -> CycleReport:
-        # 1. COMPOSE (x (x) y): Gather recent ledger continuity + new input
+        # 1. COMPOSE (x (x) y): Anchor with Foundational Canon + recent ledger continuity
         history = self.ledger.recent(limit=5)
         parent_id = history[-1].delta_id if history else None
         context_packet = {
+            "foundational_canon": self.canon_text,
             "input": sensory_input,
             "recent_deltas": [d.to_dict() for d in history],
             "active_invariants": self.constraints.active_invariants,
