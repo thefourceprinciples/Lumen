@@ -2,10 +2,11 @@ from __future__ import annotations
 import json
 import os
 import sys
-from core.schema import CUCVitals, ConstraintSet
+from core.schema import ConstraintSet
 from core.ledger import LumenLedger
 from core.kernel import LumenKernel
 from core.cognizer import build_gemini_cognizer
+from core.vitals_evaluator import compute_vitals
 
 
 def run_heartbeat(sensory_input: str) -> None:
@@ -19,14 +20,12 @@ def run_heartbeat(sensory_input: str) -> None:
         cognitive_fn=cognizer,
     )
 
-    # Baseline vitals (H=1.0 if anchored by prior ledger fragment, else 0.85)
-    prior = ledger.latest()
-    vitals = CUCVitals(
-        origin_integrity=0.95,
-        expression_fidelity=0.95,
-        historical_continuity=1.0 if prior else 0.85,
-        resonance_stability=0.95,
-        phase_cost=0.10,
+    recent_deltas = ledger.recent(limit=5)
+    vitals = compute_vitals(
+        recent_deltas=recent_deltas,
+        has_verified_input=bool(sensory_input.strip()),
+        tokens_used_ratio=0.15,
+        consecutive_errors=0,
     )
 
     report = kernel.step(sensory_input=sensory_input, vitals=vitals)
