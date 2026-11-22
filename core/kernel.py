@@ -25,19 +25,24 @@ class LumenKernel:
         ledger: LumenLedger,
         constraints: ConstraintSet | None = None,
         cognitive_fn: CognitiveFn | None = None,
-        canon_path: str | Path = "docs/CANON_CORE.md",
+        canon_dir: str | Path = "docs",
     ) -> None:
         self.ledger = ledger
         self.constraints = constraints or ConstraintSet()
         self.cognitive_fn = cognitive_fn or self._default_noop_cognizer
-        self.canon_text = self._load_canon(canon_path)
+        self.canon_text = self._load_canon_dir(canon_dir)
 
     @staticmethod
-    def _load_canon(canon_path: str | Path) -> str:
-        path = Path(canon_path)
-        if path.exists():
-            return path.read_text(encoding="utf-8")
-        return ""
+    def _load_canon_dir(canon_dir: str | Path) -> str:
+        directory = Path(canon_dir)
+        if not directory.exists() or not directory.is_dir():
+            return ""
+        sections = []
+        for md_file in sorted(directory.glob("*.md")):
+            content = md_file.read_text(encoding="utf-8").strip()
+            if content:
+                sections.append(f"--- CANON: {md_file.name} ---\n{content}")
+        return "\n\n".join(sections)
 
     def step(
         self,
