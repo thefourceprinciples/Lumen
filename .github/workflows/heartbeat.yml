@@ -3,7 +3,7 @@ name: Lumen Autonomous Heartbeat
 on:
   schedule:
     - cron: "0 */6 * * *"   # Runs every 6 hours automatically
-  workflow_dispatch:         # Allows you to trigger a cycle manually with a button click
+  workflow_dispatch:         # Allows manual trigger with a button click
 
 jobs:
   heartbeat:
@@ -26,5 +26,7 @@ jobs:
       - name: Execute Lumen Heartbeat Cycle
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
           python main.py "Scheduled heartbeat: verify homeostatic equilibrium."
