@@ -16,7 +16,7 @@ Respond ONLY with valid JSON containing these exact keys:
 """
 
 
-def build_gemini_cognizer(model_name: str = "gemini-2.5-flash"):
+def build_gemini_cognizer(model_name: str = "gemini-3.8-flash"):
     """Returns a CognitiveFn compatible with LumenKernel using the google-genai SDK."""
 
     def cognizer(
