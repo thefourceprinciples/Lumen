@@ -17,7 +17,6 @@ class LumenLedger:
         turso_token: str | None = None,
     ) -> None:
         self.db_path = str(db_path)
-        # Only use Turso cloud when db_path is the default production path or explicitly passed
         use_env_turso = str(db_path) == "lumen_ledger.sqlite"
         self.turso_url = turso_url or (os.environ.get("TURSO_DATABASE_URL") if use_env_turso else None)
         self.turso_token = turso_token or (os.environ.get("TURSO_AUTH_TOKEN") if use_env_turso else None)
@@ -101,7 +100,7 @@ class LumenLedger:
             conn.close()
         if not row:
             return None
-        return self._deserialize(json.loads(row))
+        return self._deserialize(json.loads(row[0]))
 
     def recent(self, limit: int = 5) -> List[DeltaFragment]:
         """Fetch the last N Delta Fragments in chronological order."""
@@ -114,7 +113,7 @@ class LumenLedger:
             ).fetchall()
         finally:
             conn.close()
-        return [self._deserialize(json.loads(r)) for r in reversed(rows)]
+        return [self._deserialize(json.loads(r[0])) for r in reversed(rows)]
 
     @staticmethod
     def _deserialize(data: dict) -> DeltaFragment:
