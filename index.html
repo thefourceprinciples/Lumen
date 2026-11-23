@@ -324,35 +324,31 @@
       let lastError = '';
 
       for (const model of models) {
-        const endpoints = [
-          'https://googleapis.com' + model + ':generateContent?key=' + encodeURIComponent(apiKey),
-          'https://googleapis.com' + model + ':generateContent?key=' + encodeURIComponent(apiKey)
-        ];
+        const endpoint = new URL('https://googleapis.com' + model + ':generateContent');
+        endpoint.searchParams.set('key', apiKey);
 
-        for (const url of endpoints) {
-          try {
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: payload
-            });
-            const data = await res.json();
-            if (!res.ok) {
-              lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
-              continue;
-            }
-            const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
-            if (reply) {
-              state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
-              updateVitalsUI();
-              logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
-              appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
-              setForm('character');
-              return;
-            }
-          } catch (err) {
-            lastError = model + ' network error: ' + err.message;
+        try {
+          const res = await fetch(endpoint.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
+            continue;
           }
+          const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
+          if (reply) {
+            state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+            updateVitalsUI();
+            logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
+            appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
+            setForm('character');
+            return;
+          }
+        } catch (err) {
+          lastError = model + ' network error: ' + err.message;
         }
       }
 
@@ -383,6 +379,6 @@
     loadPersonaCanon('base');
     updateVitalsUI();
   </script>
-  <script src="./avatar3d.js?v=6"></script>
+  <script src="./avatar3d.js?v=7"></script>
 </body>
 </html>
