@@ -4,14 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lumen — Homeostatic CUC Runtime & Observatory</title>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://jsdelivr.net",
-        "three/addons/": "https://jsdelivr.net"
-      }
-    }
-  </script>
   <style>
     :root {
       --bg-primary: #060913;
@@ -366,6 +358,6 @@
     if (savedKey) document.getElementById('api-key-input').value = savedKey;
     updateVitalsUI();
   </script>
-  <script type="module" src="./avatar3d.js"></script>
+  <script src="./avatar3d.js?v=3"></script>
 </body>
 </html>
