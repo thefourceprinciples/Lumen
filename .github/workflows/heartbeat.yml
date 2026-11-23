@@ -1,13 +1,12 @@
-name: Lumen Core CI
+name: Lumen Autonomous Heartbeat
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
 
 jobs:
-  test:
+  heartbeat:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,8 +23,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run homeostatic unit tests
+      - name: Execute Lumen Heartbeat Cycle
         env:
           PYTHONPATH: .
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
-          python -m pytest -v
+          python main.py "Scheduled heartbeat: verify homeostatic equilibrium."
