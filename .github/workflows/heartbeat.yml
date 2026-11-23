@@ -1,12 +1,13 @@
-name: Lumen Autonomous Heartbeat
+name: Lumen Core CI
 
 on:
-  schedule:
-    - cron: "0 */6 * * *"   # Runs every 6 hours automatically
-  workflow_dispatch:         # Allows manual trigger with a button click
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  heartbeat:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,10 +24,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Execute Lumen Heartbeat Cycle
+      - name: Run homeostatic unit tests
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          PYTHONPATH: .
         run: |
-          python main.py "Scheduled heartbeat: verify homeostatic equilibrium."
+          python -m pytest -v
