@@ -293,7 +293,7 @@
       };
       reader.readAsText(file);
     }
-    async function sendMessage() {
+        async function sendMessage() {
       const input = document.getElementById('prompt-input');
       const text = input.value.trim();
       if (!text) return;
@@ -308,12 +308,54 @@
       setForm('lantern');
       const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').trim();
       if (!apiKey) {
-        setTimeout(() => {
-          appendChat('lumen', 'No GEMINI_API_KEY set yet. Click "API Key" in the top bar to connect my processor.', 'LUMEN // DRY-RUN');
-          setForm('character');
-        }, 600);
+        appendChat('lumen', 'No GEMINI_API_KEY set yet. Click "API Key" in the top bar to connect my processor.', 'LUMEN // DRY-RUN');
+        setForm('character');
         return;
       }
+
+      const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash'];
+      const systemPrompt = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
+      const payload = JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: text }] }]
+      });
+      let lastError = 'No response returned from API.';
+
+      for (const model of models) {
+        const endpoint = new URL('https://googleapis.com' + model + ':generateContent');
+        endpoint.searchParams.set('key', apiKey);
+
+        try {
+          const res = await fetch(endpoint.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            signal: AbortSignal.timeout(8000)
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
+            continue;
+          }
+          const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
+          if (reply) {
+            state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+            updateVitalsUI();
+            logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
+            appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
+            setForm('character');
+            return;
+          } else {
+            lastError = model + ' returned empty payload: ' + JSON.stringify(data).slice(0, 180);
+          }
+        } catch (err) {
+          lastError = model + ' error: ' + err.message;
+        }
+      }
+
+      appendChat('lumen', 'Connection diagnostic: ' + lastError, 'LUMEN // FAULT');
+      setForm('character');
+    }
 
       const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash'];
       const systemPrompt = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
