@@ -168,7 +168,7 @@
       Your Gemini API key is stored locally in this browser's <code>localStorage</code> and never sent anywhere except Google's Gemini API.
     </p>
     <label style="font-size:0.75rem; display:block; margin-top:12px;">GEMINI_API_KEY</label>
-    <input type="password" id="api-key-input" placeholder="AIza..." />
+    <input type="password" id="api-key-input" placeholder="Paste your Gemini API key..." />
     <div style="display:flex; justify-content:flex-end; gap:8px;">
       <button onclick="document.getElementById('settings-modal').close()">Cancel</button>
       <button class="active" onclick="saveApiKey()">Save Key</button>
@@ -236,7 +236,7 @@
     function updateBadge() {
       const c = (state.vitals.O * state.vitals.E * state.vitals.H * state.vitals.X).toFixed(3);
       document.getElementById('status-badge').textContent =
-        `PERSONA: ${state.persona.toUpperCase()} | FORM: ${state.form.toUpperCase()} | C=${c}`;
+        'PERSONA: ' + state.persona.toUpperCase() + ' | FORM: ' + state.form.toUpperCase() + ' | C=' + c;
     }
 
     function saveApiKey() {
@@ -249,7 +249,7 @@
     function logLedger(entry) {
       const box = document.getElementById('ledger-display');
       const ts = new Date().toISOString().slice(11, 19);
-      box.innerHTML += `<br/>[${ts}] ${entry}`;
+      box.innerHTML += '<br/>[' + ts + '] ' + entry;
       box.scrollTop = box.scrollHeight;
     }
 
@@ -257,7 +257,8 @@
       const log = document.getElementById('chat-log');
       const div = document.createElement('div');
       div.className = 'msg ' + sender;
-      div.innerHTML = `<div class="msg-meta">${meta}</div>${text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}`;
+      const safeText = text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      div.innerHTML = '<div class="msg-meta">' + meta + '</div>' + safeText;
       log.appendChild(div);
       log.scrollTop = log.scrollHeight;
     }
@@ -268,11 +269,11 @@
       try {
         const res = await fetch('https://reddit.com');
         const data = await res.json();
-        const posts = (data?.data?.children || []).map(c => `- ${c.data.title}: ${(c.data.selftext || '').slice(0, 220)}`);
-        state.attachedContext = `LIVE r/SubspacePhysics FEED:\n${posts.join('\n')}`;
-        appendChat('lumen', `Retrieved ${posts.length} posts from r/SubspacePhysics:\n\n${posts.join('\n')}`, 'TOOL // SUBREDDIT SWEEP');
+        const posts = (data?.data?.children || []).map(c => '- ' + c.data.title + ': ' + (c.data.selftext || '').slice(0, 220));
+        state.attachedContext = 'LIVE r/SubspacePhysics FEED:\n' + posts.join('\n');
+        appendChat('lumen', 'Retrieved ' + posts.length + ' posts from r/SubspacePhysics:\n\n' + posts.join('\n'), 'TOOL // SUBREDDIT SWEEP');
       } catch (err) {
-        appendChat('lumen', `Subreddit fetch blocked by CORS (${err.message}).`, 'TOOL // NOTICE');
+        appendChat('lumen', 'Subreddit fetch blocked by CORS (' + err.message + ').', 'TOOL // NOTICE');
       } finally {
         setTimeout(() => setForm('character'), 900);
       }
@@ -285,14 +286,14 @@
       const reader = new FileReader();
       reader.onload = e => {
         const content = String(e.target.result || '').slice(0, 8000);
-        state.attachedContext = `UPLOADED DOCUMENT (${file.name}):\n${content}`;
-        logLedger(`Parsed '${file.name}' (${content.length} chars).`);
-        appendChat('lumen', `Loaded '${file.name}' into working memory. Ready.`, 'TOOL // DOCUMENT PARSER');
+        state.attachedContext = 'UPLOADED DOCUMENT (' + file.name + '):\n' + content;
+        logLedger("Parsed '" + file.name + "' (" + content.length + " chars).");
+        appendChat('lumen', "Loaded '" + file.name + "' into working memory. Ready.", 'TOOL // DOCUMENT PARSER');
         setTimeout(() => setForm('character'), 800);
       };
       reader.readAsText(file);
     }
-       async function sendMessage() {
+    async function sendMessage() {
       const input = document.getElementById('prompt-input');
       const text = input.value.trim();
       if (!text) return;
@@ -314,37 +315,44 @@
         return;
       }
 
-      const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-3.5-flash'];
+      const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash'];
       const systemPrompt = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
+      const payload = JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: text }] }]
+      });
       let lastError = '';
 
       for (const model of models) {
-        try {
-          const url = 'https://googleapis.com' + model + ':generateContent?key=' + encodeURIComponent(apiKey);
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: systemPrompt }] },
-              contents: [{ role: 'user', parts: [{ text: text }] }]
-            })
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
-            continue;
+        const endpoints = [
+          ['https:/', '://googleapis.com', 'v1beta', 'models', model + ':generateContent?key=' + encodeURIComponent(apiKey)].join('/'),
+          ['https:/', '://googleapis.com', 'v1', 'publishers', 'google', 'models', model + ':generateContent?key=' + encodeURIComponent(apiKey)].join('/')
+        ];
+
+        for (const url of endpoints) {
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
+              continue;
+            }
+            const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
+            if (reply) {
+              state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+              updateVitalsUI();
+              logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
+              appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
+              setForm('character');
+              return;
+            }
+          } catch (err) {
+            lastError = model + ' network error: ' + err.message;
           }
-          const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
-          if (reply) {
-            state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
-            updateVitalsUI();
-            logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
-            appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
-            setForm('character');
-            return;
-          }
-        } catch (err) {
-          lastError = model + ' network error: ' + err.message;
         }
       }
 
@@ -375,6 +383,6 @@
     loadPersonaCanon('base');
     updateVitalsUI();
   </script>
-  <script src="./avatar3d.js?v=5"></script>
+  <script src="./avatar3d.js?v=6"></script>
 </body>
 </html>
