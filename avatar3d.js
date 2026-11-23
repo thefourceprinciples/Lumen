@@ -40,7 +40,6 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// 3D Projection Math
 function project(x, y, z, cx, cy, scale) {
   const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
   const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
@@ -72,13 +71,11 @@ function drawRing3D(radius, yOffset, tiltX, tiltZ, segments, cx, cy, scale, alph
   ctx.beginPath();
   for (let i = 0; i <= segments; i++) {
     const theta = (i / segments) * Math.PI * 2;
-    let px = Math.cos(theta) * radius;
-    let py = 0;
-    let pz = Math.sin(theta) * radius;
+    const px = Math.cos(theta) * radius;
+    const pz = Math.sin(theta) * radius;
 
-    // Tilt
-    const ty = py * Math.cos(tiltX) - pz * Math.sin(tiltX);
-    const tz = pz * Math.cos(tiltX) + py * Math.sin(tiltX);
+    const ty = -pz * Math.sin(tiltX);
+    const tz = pz * Math.cos(tiltX);
     const tx = px * Math.cos(tiltZ) - ty * Math.sin(tiltZ);
     const ty2 = ty * Math.cos(tiltZ) + px * Math.sin(tiltZ);
 
@@ -89,8 +86,8 @@ function drawRing3D(radius, yOffset, tiltX, tiltZ, segments, cx, cy, scale, alph
   ctx.stroke();
 }
 
-// 900 Volumetric Ambient Particles
-const particles = Array.from({ length: 900 }, () => ({
+// 260 Lightweight Depth Particles (no expensive per-particle shadowBlur)
+const particles = Array.from({ length: 260 }, () => ({
   x: (Math.random() - 0.5) * 4.5,
   y: (Math.random() - 0.5) * 4.5,
   z: (Math.random() - 0.5) * 4.5,
@@ -115,33 +112,37 @@ function render() {
   const color = PALETTES[st.persona] || '#38bdf8';
 
   ctx.clearRect(0, 0, w, h);
-  ctx.globalCompositeOperation = 'lighter'; // HDR Additive Bloom Effect
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 22;
 
   const cx = st.layout === 'roam' ? w * 0.5 + Math.cos(t * 0.45) * (w * 0.15) : w * 0.5;
   const cy = st.layout === 'roam' ? h * 0.5 + Math.sin(t * 0.65) * (h * 0.12) : h * 0.52;
   const scale = Math.min(w, h) * 0.24;
 
-  // Volumetric Ambient Particle Field
-  particles.forEach((pt) => {
-    const px = pt.x * Math.cos(t * 0.15) - pt.z * Math.sin(t * 0.15);
-    const pz = pt.z * Math.cos(t * 0.15) + pt.x * Math.sin(t * 0.15);
+  // Fast Particle Pass (shadowBlur disabled for 60fps)
+  ctx.shadowBlur = 0;
+  const cosT = Math.cos(t * 0.15);
+  const sinT = Math.sin(t * 0.15);
+  for (let i = 0; i < particles.length; i++) {
+    const pt = particles[i];
+    const px = pt.x * cosT - pt.z * sinT;
+    const pz = pt.z * cosT + pt.x * sinT;
     const proj = project(px, pt.y + Math.sin(t + pt.phase) * 0.08, pz, cx, cy, scale);
     if (proj.z > -3.5) {
-      ctx.globalAlpha = Math.max(0.08, 0.45 - proj.z * 0.08);
-      ctx.beginPath();
-      ctx.arc(proj.x, proj.y, Math.max(1, proj.s * 0.014), 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = Math.max(0.1, 0.55 - proj.z * 0.1);
+      const size = Math.max(1.2, proj.s * 0.015);
+      ctx.fillRect(proj.x, proj.y, size, size);
     }
-  });
+  }
+
+  // Primary Hologram Pass (HDR Glow enabled only on main geometry)
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 14;
 
   if (st.form === 'orb') {
-    // 3D Gyroscopic Harmonic Orb
     for (let i = 0; i < 4; i++) {
-      drawRing3D(0.75 + i * 0.24, 0, t * (0.9 + i * 0.2), i * 0.65, 48, cx, cy, scale, 0.85);
+      drawRing3D(0.75 + i * 0.24, 0, t * (0.9 + i * 0.2), i * 0.65, 36, cx, cy, scale, 0.85);
     }
     const core = project(0, 0, 0, cx, cy, scale);
     ctx.globalAlpha = 0.95;
@@ -150,7 +151,6 @@ function render() {
     ctx.fill();
 
   } else if (st.form === 'lantern') {
-    // 3D Faceted Octahedral Lantern
     const bob = Math.sin(t * 2) * 0.12;
     const top = [0, 1.15 + bob, 0];
     const bot = [0, -1.05 + bob, 0];
@@ -173,7 +173,6 @@ function render() {
     ctx.fill();
 
   } else if (st.form === 'fox') {
-    // 3D Luminous Running Fox (Hoshi Nine-Tails)
     const stride = Math.sin(t * 6);
     const fx = Math.cos(t * 1.1) * 0.9;
     const fy = Math.sin(t * 6) * 0.14;
@@ -194,7 +193,6 @@ function render() {
     drawLine3D(neck, hip, cx, cy, scale, 0.95, 2.5);
     drawLine3D(chest, hip, cx, cy, scale, 0.85, 1.8);
 
-    // 7 Flowing Luminous Tails
     for (let k = -3; k <= 3; k++) {
       const mid = [fx - 1.05, fy + 0.28 + Math.abs(k) * 0.08 + Math.sin(t * 6 + k) * 0.14, fz + k * 0.22];
       const tip = [fx - 1.65, fy + 0.18 + Math.abs(k) * 0.14 + Math.cos(t * 6 + k) * 0.2, fz + k * 0.36];
@@ -203,7 +201,6 @@ function render() {
     }
 
   } else {
-    // 3D Sculpted Character Silhouette + Persona Rig
     const bob = Math.sin(t * 1.8) * 0.08;
     const headPos = project(0, 1.05 + bob, 0, cx, cy, scale);
     ctx.globalAlpha = 0.92;
@@ -212,7 +209,6 @@ function render() {
     ctx.arc(headPos.x, headPos.y, headPos.s * 0.26, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 3D Conical Cloak Mesh
     const shoulders = [0, 0.72 + bob, 0];
     const basePts = [];
     for (let s = 0; s < 8; s++) {
@@ -224,14 +220,12 @@ function render() {
       drawLine3D(basePts[s], basePts[(s + 1) % 8], cx, cy, scale, 0.78, 1.8);
     }
 
-    // Heart Core
     const heart = project(0, 0.22 + bob, 0, cx, cy, scale);
     ctx.globalAlpha = 1;
     ctx.beginPath();
     ctx.arc(heart.x, heart.y, heart.s * (0.14 + Math.sin(t * 4) * 0.03), 0, Math.PI * 2);
     ctx.fill();
 
-    // Persona Accessories
     if (st.persona === 'oracle') {
       for (let r = 0; r < 12; r++) {
         const a = (r / 12) * Math.PI * 2 + t * 0.35;
@@ -242,11 +236,11 @@ function render() {
         );
       }
     } else if (st.persona === 'detective') {
-      drawRing3D(0.55, 1.24 + bob, 0.12, -0.12, 32, cx, cy, scale, 0.95);
-      drawRing3D(0.22, 0.35 + bob, 0.3, 0.2, 24, cx + scale * 0.55, cy, scale, 0.9);
+      drawRing3D(0.55, 1.24 + bob, 0.12, -0.12, 28, cx, cy, scale, 0.95);
+      drawRing3D(0.22, 0.35 + bob, 0.3, 0.2, 20, cx + scale * 0.55, cy, scale, 0.9);
     } else if (st.persona === 'engineer') {
-      drawRing3D(0.68, 1.05 + bob, 0.35, Math.sin(t) * 0.3, 36, cx, cy, scale, 0.9);
-      drawRing3D(0.88, 1.05 + bob, -0.35, Math.cos(t) * 0.3, 36, cx, cy, scale, 0.75);
+      drawRing3D(0.68, 1.05 + bob, 0.35, Math.sin(t) * 0.3, 30, cx, cy, scale, 0.9);
+      drawRing3D(0.88, 1.05 + bob, -0.35, Math.cos(t) * 0.3, 30, cx, cy, scale, 0.75);
     }
   }
 
