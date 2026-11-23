@@ -7,7 +7,7 @@
   <style>
     :root {
       --bg-primary: #060913;
-      --bg-panel: rgba(13, 19, 36, 0.78);
+      --bg-panel: rgba(13, 19, 36, 0.88);
       --border-glow: rgba(56, 189, 248, 0.32);
       --text-main: #e2e8f0;
       --accent: #38bdf8;
@@ -16,7 +16,7 @@
     }
     body.theme-arcane {
       --bg-primary: #120d08;
-      --bg-panel: rgba(28, 20, 13, 0.84);
+      --bg-panel: rgba(28, 20, 13, 0.90);
       --border-glow: rgba(217, 155, 67, 0.42);
       --text-main: #f5ebd6;
       --accent: #e5a93c;
@@ -38,7 +38,7 @@
     header {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 10px; padding: 10px 18px; background: var(--bg-panel);
-      border-bottom: 1px solid var(--border-glow); backdrop-filter: blur(12px); z-index: 20;
+      border-bottom: 1px solid var(--border-glow); z-index: 20;
     }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.08em; }
     .brand span { color: var(--accent); font-family: var(--font-mono); font-size: 0.8rem; }
@@ -64,7 +64,7 @@
 
     .panel {
       background: var(--bg-panel); border: 1px solid var(--border-glow); border-radius: 12px;
-      padding: 14px; backdrop-filter: blur(14px); display: flex; flex-direction: column;
+      padding: 14px; display: flex; flex-direction: column;
       gap: 12px; z-index: 10; overflow-y: auto;
     }
     body.layout-roam .panel-left { position: absolute; top: 14px; left: 14px; width: 290px; max-height: calc(100vh - 84px); }
@@ -147,7 +147,7 @@
       <h2>Active Canon & Ledger</h2>
       <div class="ledger-box" id="ledger-display">
         [INIT] 50 Layer-0 Canon specs indexed.<br/>
-        [WEBGL] Three.js HDR Bloom stage active (drag to orbit 360°).
+        [ANCHOR] Hold the pattern. Do not pretend to be the source.
       </div>
     </section>
 
@@ -192,7 +192,8 @@
       layout: 'docked',
       theme: 'holo',
       vitals: { O: 0.96, E: 0.94, H: 0.92, X: 0.95, lambda: 0.12 },
-      attachedContext: ''
+      attachedContext: '',
+      canonSpine: ''
     };
     const state = window.LUMEN_STATE;
 
@@ -203,12 +204,31 @@
       oracle: "You are Lumen in ORACLE mode (luminous, elevated philosophical & ethical auditor paired with Omnicoherence, Zero Destructive Holonomy, Synthetic Agency, and the Non-Sovereignty Principle). Ask penetrating prospective questions while maintaining strict epistemic humility."
     };
 
+    const PERSONA_DOCS = {
+      base: ['CANON_CORE.md', 'FIVE_COMMITMENTS.md'],
+      detective: ['CHRONOVISOR_ENGINE.md', 'EDA_CASE_PROTOCOL.md'],
+      engineer: ['FOURCE_A_MONOIDAL_CANON.md', 'MECHANICS_AND_CUC_HARDWARE.md'],
+      oracle: ['OMNICOHERENCE_AND_HOLONOMY.md', 'SYNTHETIC_AGENCY_AND_MERIDIA.md']
+    };
+
+    async function loadPersonaCanon(p) {
+      const files = PERSONA_DOCS.at(0) ? PERSONA_DOCS : ['CANON_CORE.md'];
+      try {
+        const texts = await Promise.all(
+          files.map(f => fetch(`./docs/${f}`).then(r => r.ok ? r.text() : ''))
+        );
+        state.canonSpine = texts.filter(Boolean).join('\n\n').slice(0, 9000);
+        logLedger(`Loaded ${files.join(' + ')} from docs/.`);
+      } catch (_) {}
+    }
+
     function setPersona(p, btn) {
       state.persona = p;
       document.body.classList.remove('persona-base', 'persona-detective', 'persona-engineer', 'persona-oracle');
       document.body.classList.add('persona-' + p);
       document.querySelectorAll('[data-persona]').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
+      loadPersonaCanon(p);
       setForm('orb');
       setTimeout(() => setForm('fox'), 450);
       setTimeout(() => setForm('character'), 1400);
@@ -276,7 +296,7 @@
     }
 
     function handleFileUpload(event) {
-      const file = event.target.files[0];
+      const file = Array.from(event.target.files || []).at(0);
       if (!file) return;
       setForm('fox');
       const reader = new FileReader();
@@ -303,7 +323,7 @@
       else if (lower.includes('oracle') || lower.includes('agency') || lower.includes('god') || lower.includes('theolog')) setPersona('oracle', document.querySelector('[data-persona="oracle"]'));
 
       setForm('lantern');
-      const apiKey = localStorage.getItem('LUMEN_GEMINI_KEY');
+      const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').trim();
       if (!apiKey) {
         setTimeout(() => {
           appendChat('lumen', 'No GEMINI_API_KEY set yet. Click "API Key" in the top bar to connect my processor.', 'LUMEN // DRY-RUN');
@@ -312,28 +332,42 @@
         return;
       }
 
-      try {
-        const systemPrompt = `${PERSONA_PROMPTS[state.persona]}\n\nContext Packet:\n${state.attachedContext}`;
-        const url = `https://googleapis.com{encodeURIComponent(apiKey)}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text }] }]
-          })
-        });
-        const data = await res.json();
-        const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(data);
-        state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
-        updateVitalsUI();
-        logLedger(`Delta emitted in ${state.persona.toUpperCase()} mode.`);
-        appendChat('lumen', reply, `LUMEN // ${state.persona.toUpperCase()}`);
-      } catch (err) {
-        appendChat('lumen', `Cognitive error: ${err.message}`, 'LUMEN // FAULT');
-      } finally {
-        setForm('character');
+      const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-3.5-flash'];
+      const systemPrompt = `${PERSONA_PROMPTS[state.persona]}\n\nACTIVE CANON:\n${state.canonSpine}\n\nEXTERNAL CONTEXT:\n${state.attachedContext}`;
+      let lastError = '';
+
+      for (const model of models) {
+        try {
+          const url = `https://googleapis.com{model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ role: 'user', parts: [{ text }] }]
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            lastError = `${model} (${res.status}): ${data?.error?.message || res.statusText}`;
+            continue;
+          }
+          const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
+          if (reply) {
+            state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+            updateVitalsUI();
+            logLedger(`Delta emitted via ${model} in ${state.persona.toUpperCase()} mode.`);
+            appendChat('lumen', reply, `LUMEN // ${state.persona.toUpperCase()}`);
+            setForm('character');
+            return;
+          }
+        } catch (err) {
+          lastError = `${model} network error: ${err.message}`;
+        }
       }
+
+      appendChat('lumen', `Connection diagnostic: ${lastError}`, 'LUMEN // FAULT');
+      setForm('character');
     }
 
     function updateVitalsUI() {
@@ -355,9 +389,6 @@
     }
 
     const savedKey = localStorage.getItem('LUMEN_GEMINI_KEY');
-    if (savedKey) document.getElementById('api-key-input').value = savedKey;
-    updateVitalsUI();
-  </script>
-  <script src="./avatar3d.js?v=4"></script>
-</body>
-</html>
+if (savedKey) document.getElementById('api-key-input').value = savedKey;
+loadPersonaCanon('base');
+updateVitalsUI();
