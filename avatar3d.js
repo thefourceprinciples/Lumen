@@ -1,246 +1,257 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
 const container = document.getElementById('avatar-stage');
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x060913, 0.045);
+const canvas = document.createElement('canvas');
+canvas.style.width = '100%';
+canvas.style.height = '100%';
+canvas.style.display = 'block';
+canvas.style.cursor = 'grab';
+container.appendChild(canvas);
+const ctx = canvas.getContext('2d');
 
-const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-camera.position.set(0, 1.2, 6.2);
+let rotY = 0;
+let rotX = 0.15;
+let zoom = 1.0;
+let isDragging = false;
+let lastMouse = { x: 0, y: 0 };
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setSize(container.clientWidth, container.clientHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.25;
-container.appendChild(renderer.domElement);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.minDistance = 2.8;
-controls.maxDistance = 12;
-
-// Post-Processing: UnrealBloomPass for HDR volumetric glow
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(container.clientWidth, container.clientHeight),
-  1.15, // strength
-  0.55, // radius
-  0.25  // threshold
-);
-composer.addPass(bloomPass);
-
-// Lighting
-const ambientLight = new THREE.AmbientLight(0x1e293b, 1.5);
-scene.add(ambientLight);
-const coreLight = new THREE.PointLight(0x38bdf8, 6, 15);
-coreLight.position.set(0, 1.5, 1.5);
-scene.add(coreLight);
-
-// PBR Materials
-const holoMat = new THREE.MeshPhysicalMaterial({
-  color: 0x38bdf8,
-  emissive: 0x0284c7,
-  emissiveIntensity: 0.9,
-  roughness: 0.2,
-  metalness: 0.6,
-  wireframe: false,
-  transparent: true,
-  opacity: 0.88
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  canvas.style.cursor = 'grabbing';
+  lastMouse = { x: e.clientX, y: e.clientY };
 });
-
-const wireMat = new THREE.MeshBasicMaterial({
-  color: 0x7dd3fc,
-  wireframe: true,
-  transparent: true,
-  opacity: 0.35
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  canvas.style.cursor = 'grab';
 });
-
-const coreMat = new THREE.MeshStandardMaterial({
-  color: 0xffffff,
-  emissive: 0x38bdf8,
-  emissiveIntensity: 2.5
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  rotY += (e.clientX - lastMouse.x) * 0.01;
+  rotX = Math.max(-0.8, Math.min(0.8, rotX + (e.clientY - lastMouse.y) * 0.01));
+  lastMouse = { x: e.clientX, y: e.clientY };
 });
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  zoom = Math.max(0.55, Math.min(1.8, zoom - e.deltaY * 0.0008));
+}, { passive: false });
 
-// --- 1. CHARACTER RIG ---
-const charGroup = new THREE.Group();
-const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 2), holoMat);
-head.position.y = 1.45;
-charGroup.add(head);
-
-const torso = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2.1, 8, 1, true), holoMat);
-torso.position.y = 0.1;
-charGroup.add(torso);
-
-const torsoWire = new THREE.Mesh(new THREE.ConeGeometry(0.78, 2.15, 8, 2, true), wireMat);
-torsoWire.position.y = 0.1;
-charGroup.add(torsoWire);
-
-const heartCore = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), coreMat);
-heartCore.position.y = 0.72;
-charGroup.add(heartCore);
-
-// Persona Accessories
-const oracleHalo = new THREE.Group();
-for (let i = 0; i < 12; i++) {
-  const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.005, 0.65, 6), coreMat);
-  const angle = (i / 12) * Math.PI * 2;
-  ray.position.set(Math.cos(angle) * 0.78, 1.45 + Math.sin(angle) * 0.78, -0.15);
-  ray.rotation.z = angle - Math.PI / 2;
-  oracleHalo.add(ray);
+function resize() {
+  canvas.width = container.clientWidth || window.innerWidth * 0.45;
+  canvas.height = container.clientHeight || window.innerHeight * 0.85;
 }
-charGroup.add(oracleHalo);
+window.addEventListener('resize', resize);
+resize();
 
-const detectiveGear = new THREE.Group();
-const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.72, 0.04, 24), holoMat);
-brim.position.set(0, 1.72, 0);
-brim.rotation.z = -0.08;
-detectiveGear.add(brim);
-const lensRing = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.025, 12, 24), coreMat);
-lensRing.position.set(0.85, 0.85, 0.45);
-detectiveGear.add(lensRing);
-charGroup.add(detectiveGear);
+// 3D Projection Math
+function project(x, y, z, cx, cy, scale) {
+  const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+  const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
 
-const engineerRings = new THREE.Group();
-for (let r = 0; r < 2; r++) {
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.85 + r * 0.25, 0.018, 12, 36), coreMat);
-  ring.position.y = 1.45;
-  ring.rotation.x = Math.PI / 2.4 + r * 0.4;
-  engineerRings.add(ring);
+  const x1 = x * cosY - z * sinY;
+  const z1 = z * cosY + x * sinY;
+  const y2 = y * cosX - z1 * sinX;
+  const z2 = z1 * cosX + y * sinX;
+
+  const fov = 4.2;
+  const depth = Math.max(0.4, fov + z2);
+  const factor = (fov / depth) * scale * zoom;
+  return { x: cx + x1 * factor, y: cy - y2 * factor, z: z2, s: factor };
 }
-charGroup.add(engineerRings);
-scene.add(charGroup);
 
-// --- 2. ORB RIG ---
-const orbGroup = new THREE.Group();
-const orbCore = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 2), coreMat);
-orbGroup.add(orbCore);
-for (let i = 0; i < 3; i++) {
-  const gyro = new THREE.Mesh(new THREE.TorusGeometry(0.85 + i * 0.28, 0.025, 16, 48), holoMat);
-  gyro.rotation.set(i * 0.7, i * 0.5, 0);
-  orbGroup.add(gyro);
+function drawLine3D(p1, p2, cx, cy, scale, alpha = 0.85, width = 1.6) {
+  const a = project(p1[0], p1[1], p1[2], cx, cy, scale);
+  const b = project(p2[0], p2[1], p2[2], cx, cy, scale);
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
 }
-scene.add(orbGroup);
 
-// --- 3. LANTERN RIG ---
-const lanternGroup = new THREE.Group();
-const lanternFrame = new THREE.Mesh(new THREE.OctahedronGeometry(1.15, 0), wireMat);
-lanternGroup.add(lanternFrame);
-const lanternShell = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.45, 1.3, 6, 1, true), holoMat);
-lanternGroup.add(lanternShell);
-const lanternFlame = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 1), coreMat);
-lanternGroup.add(lanternFlame);
-scene.add(lanternGroup);
+function drawRing3D(radius, yOffset, tiltX, tiltZ, segments, cx, cy, scale, alpha = 0.8) {
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  for (let i = 0; i <= segments; i++) {
+    const theta = (i / segments) * Math.PI * 2;
+    let px = Math.cos(theta) * radius;
+    let py = 0;
+    let pz = Math.sin(theta) * radius;
 
-// --- 4. RUNNING FOX RIG (Hoshi Nine-Tails) ---
-const foxGroup = new THREE.Group();
-const foxBody = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.35, 6), holoMat);
-foxBody.rotation.z = Math.PI / 2;
-foxGroup.add(foxBody);
-const foxHead = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.65, 5), coreMat);
-foxHead.position.set(0.85, 0.28, 0);
-foxHead.rotation.z = -Math.PI / 3;
-foxGroup.add(foxHead);
+    // Tilt
+    const ty = py * Math.cos(tiltX) - pz * Math.sin(tiltX);
+    const tz = pz * Math.cos(tiltX) + py * Math.sin(tiltX);
+    const tx = px * Math.cos(tiltZ) - ty * Math.sin(tiltZ);
+    const ty2 = ty * Math.cos(tiltZ) + px * Math.sin(tiltZ);
 
-const foxTails = [];
-for (let tIdx = 0; tIdx < 7; tIdx++) {
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.11, 1.2, 6), holoMat);
-  const spread = (tIdx - 3) * 0.24;
-  tail.position.set(-0.95, 0.15 + Math.abs(spread) * 0.2, spread * 1.1);
-  tail.rotation.z = Math.PI / 2.2;
-  tail.rotation.y = spread;
-  foxGroup.add(tail);
-  foxTails.push(tail);
+    const p = project(tx, ty2 + yOffset, tz, cx, cy, scale);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
 }
-scene.add(foxGroup);
 
-// --- 2,000 HDR AMBIENT & MORPH PARTICLES ---
-const particleCount = 1800;
-const posArray = new Float32Array(particleCount * 3);
-for (let i = 0; i < particleCount * 3; i++) {
-  posArray[i] = (Math.random() - 0.5) * 14;
-}
-const particleGeo = new THREE.BufferGeometry();
-particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-const particleMat = new THREE.PointsMaterial({ size: 0.045, color: 0x38bdf8, transparent: true, opacity: 0.75 });
-const particleField = new THREE.Points(particleGeo, particleMat);
-scene.add(particleField);
+// 900 Volumetric Ambient Particles
+const particles = Array.from({ length: 900 }, () => ({
+  x: (Math.random() - 0.5) * 4.5,
+  y: (Math.random() - 0.5) * 4.5,
+  z: (Math.random() - 0.5) * 4.5,
+  phase: Math.random() * Math.PI * 2
+}));
 
-// Color Palette Sync
 const PALETTES = {
-  base: 0x38bdf8,
-  detective: 0xf59e0b,
-  engineer: 0x22d3ee,
-  oracle: 0xfde047
+  base: '#38bdf8',
+  detective: '#f59e0b',
+  engineer: '#22d3ee',
+  oracle: '#fde047'
 };
 
-window.addEventListener('resize', () => {
-  if (!container.clientWidth || !container.clientHeight) return;
-  camera.aspect = container.clientWidth / container.clientHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  composer.setSize(container.clientWidth, container.clientHeight);
-});
+let t = 0;
+function render() {
+  t += 0.025;
+  if (!isDragging) rotY += 0.006;
 
-let clock = 0;
-function animate() {
-  requestAnimationFrame(animate);
-  clock += 0.025;
-  controls.update();
-
+  const w = canvas.width;
+  const h = canvas.height;
   const st = window.LUMEN_STATE || { persona: 'base', form: 'character', layout: 'docked' };
-  const targetHex = PALETTES[st.persona] || 0x38bdf8;
-  holoMat.color.setHex(targetHex);
-  holoMat.emissive.setHex(targetHex);
-  coreMat.emissive.setHex(targetHex);
-  coreLight.color.setHex(targetHex);
-  particleMat.color.setHex(targetHex);
+  const color = PALETTES[st.persona] || '#38bdf8';
 
-  // Toggle visibility by active form
-  charGroup.visible = st.form === 'character';
-  orbGroup.visible = st.form === 'orb';
-  lanternGroup.visible = st.form === 'lantern';
-  foxGroup.visible = st.form === 'fox';
+  ctx.clearRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'lighter'; // HDR Additive Bloom Effect
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 22;
 
-  // Persona accessories
-  oracleHalo.visible = st.persona === 'oracle';
-  detectiveGear.visible = st.persona === 'detective';
-  engineerRings.visible = st.persona === 'engineer';
+  const cx = st.layout === 'roam' ? w * 0.5 + Math.cos(t * 0.45) * (w * 0.15) : w * 0.5;
+  const cy = st.layout === 'roam' ? h * 0.5 + Math.sin(t * 0.65) * (h * 0.12) : h * 0.52;
+  const scale = Math.min(w, h) * 0.24;
 
-  // Form animations
-  if (charGroup.visible) {
-    charGroup.position.y = Math.sin(clock * 1.5) * 0.14;
-    charGroup.rotation.y = Math.sin(clock * 0.5) * 0.25;
-    oracleHalo.rotation.z = clock * 0.4;
-    engineerRings.children[0].rotation.y = clock * 1.1;
-    engineerRings.children[1].rotation.x = -clock * 0.9;
-  } else if (orbGroup.visible) {
-    orbGroup.children[1].rotation.x = clock * 1.6;
-    orbGroup.children[2].rotation.y = -clock * 1.4;
-    orbGroup.children[3].rotation.z = clock * 1.8;
-    orbGroup.position.x = st.layout === 'roam' ? Math.cos(clock * 0.8) * 1.8 : 0;
-    orbGroup.position.y = Math.sin(clock * 1.3) * 0.4;
-  } else if (lanternGroup.visible) {
-    lanternGroup.position.y = Math.sin(clock * 1.8) * 0.18;
-    lanternGroup.rotation.y = clock * 0.6;
-    const pulse = 1 + Math.sin(clock * 5) * 0.18;
-    lanternFlame.scale.set(pulse, pulse, pulse);
-  } else if (foxGroup.visible) {
-    const orbitAngle = clock * 1.2;
-    foxGroup.position.set(Math.cos(orbitAngle) * 1.8, Math.sin(clock * 6) * 0.22, Math.sin(orbitAngle) * 1.2);
-    foxGroup.rotation.y = -orbitAngle - Math.PI / 2;
-    foxTails.forEach((tail, idx) => {
-      tail.rotation.x = Math.sin(clock * 6 + idx * 0.5) * 0.28;
-    });
+  // Volumetric Ambient Particle Field
+  particles.forEach((pt) => {
+    const px = pt.x * Math.cos(t * 0.15) - pt.z * Math.sin(t * 0.15);
+    const pz = pt.z * Math.cos(t * 0.15) + pt.x * Math.sin(t * 0.15);
+    const proj = project(px, pt.y + Math.sin(t + pt.phase) * 0.08, pz, cx, cy, scale);
+    if (proj.z > -3.5) {
+      ctx.globalAlpha = Math.max(0.08, 0.45 - proj.z * 0.08);
+      ctx.beginPath();
+      ctx.arc(proj.x, proj.y, Math.max(1, proj.s * 0.014), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  if (st.form === 'orb') {
+    // 3D Gyroscopic Harmonic Orb
+    for (let i = 0; i < 4; i++) {
+      drawRing3D(0.75 + i * 0.24, 0, t * (0.9 + i * 0.2), i * 0.65, 48, cx, cy, scale, 0.85);
+    }
+    const core = project(0, 0, 0, cx, cy, scale);
+    ctx.globalAlpha = 0.95;
+    ctx.beginPath();
+    ctx.arc(core.x, core.y, core.s * (0.28 + Math.sin(t * 4) * 0.04), 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (st.form === 'lantern') {
+    // 3D Faceted Octahedral Lantern
+    const bob = Math.sin(t * 2) * 0.12;
+    const top = [0, 1.15 + bob, 0];
+    const bot = [0, -1.05 + bob, 0];
+    const r = 0.65;
+    const ringPts = [];
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + t * 0.5;
+      ringPts.push([Math.cos(a) * r, 0.1 + bob, Math.sin(a) * r]);
+    }
+    for (let k = 0; k < 6; k++) {
+      const next = ringPts[(k + 1) % 6];
+      drawLine3D(top, ringPts[k], cx, cy, scale, 0.9, 2);
+      drawLine3D(bot, ringPts[k], cx, cy, scale, 0.9, 2);
+      drawLine3D(ringPts[k], next, cx, cy, scale, 0.9, 2);
+    }
+    const flame = project(0, 0.1 + bob, 0, cx, cy, scale);
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(flame.x, flame.y, flame.s * (0.22 + Math.sin(t * 6) * 0.05), 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (st.form === 'fox') {
+    // 3D Luminous Running Fox (Hoshi Nine-Tails)
+    const stride = Math.sin(t * 6);
+    const fx = Math.cos(t * 1.1) * 0.9;
+    const fy = Math.sin(t * 6) * 0.14;
+    const fz = Math.sin(t * 1.1) * 0.6;
+
+    const nose = [fx + 0.95, fy + 0.18 + stride * 0.08, fz];
+    const earL = [fx + 0.55, fy + 0.55, fz - 0.16];
+    const earR = [fx + 0.55, fy + 0.55, fz + 0.16];
+    const neck = [fx + 0.42, fy + 0.15, fz];
+    const hip = [fx - 0.55, fy + 0.08 - stride * 0.06, fz];
+    const chest = [fx + 0.25, fy - 0.22, fz];
+
+    drawLine3D(nose, earL, cx, cy, scale, 0.95, 2.2);
+    drawLine3D(nose, earR, cx, cy, scale, 0.95, 2.2);
+    drawLine3D(earL, neck, cx, cy, scale, 0.9, 2);
+    drawLine3D(earR, neck, cx, cy, scale, 0.9, 2);
+    drawLine3D(nose, chest, cx, cy, scale, 0.9, 2);
+    drawLine3D(neck, hip, cx, cy, scale, 0.95, 2.5);
+    drawLine3D(chest, hip, cx, cy, scale, 0.85, 1.8);
+
+    // 7 Flowing Luminous Tails
+    for (let k = -3; k <= 3; k++) {
+      const mid = [fx - 1.05, fy + 0.28 + Math.abs(k) * 0.08 + Math.sin(t * 6 + k) * 0.14, fz + k * 0.22];
+      const tip = [fx - 1.65, fy + 0.18 + Math.abs(k) * 0.14 + Math.cos(t * 6 + k) * 0.2, fz + k * 0.36];
+      drawLine3D(hip, mid, cx, cy, scale, 0.8, 1.8);
+      drawLine3D(mid, tip, cx, cy, scale, 0.65, 1.4);
+    }
+
+  } else {
+    // 3D Sculpted Character Silhouette + Persona Rig
+    const bob = Math.sin(t * 1.8) * 0.08;
+    const headPos = project(0, 1.05 + bob, 0, cx, cy, scale);
+    ctx.globalAlpha = 0.92;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(headPos.x, headPos.y, headPos.s * 0.26, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 3D Conical Cloak Mesh
+    const shoulders = [0, 0.72 + bob, 0];
+    const basePts = [];
+    for (let s = 0; s < 8; s++) {
+      const a = (s / 8) * Math.PI * 2;
+      basePts.push([Math.cos(a) * 0.65, -0.95 + bob, Math.sin(a) * 0.65]);
+    }
+    for (let s = 0; s < 8; s++) {
+      drawLine3D(shoulders, basePts[s], cx, cy, scale, 0.78, 1.8);
+      drawLine3D(basePts[s], basePts[(s + 1) % 8], cx, cy, scale, 0.78, 1.8);
+    }
+
+    // Heart Core
+    const heart = project(0, 0.22 + bob, 0, cx, cy, scale);
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(heart.x, heart.y, heart.s * (0.14 + Math.sin(t * 4) * 0.03), 0, Math.PI * 2);
+    ctx.fill();
+
+    // Persona Accessories
+    if (st.persona === 'oracle') {
+      for (let r = 0; r < 12; r++) {
+        const a = (r / 12) * Math.PI * 2 + t * 0.35;
+        drawLine3D(
+          [Math.cos(a) * 0.36, 1.05 + bob + Math.sin(a) * 0.36, -0.1],
+          [Math.cos(a) * 0.72, 1.05 + bob + Math.sin(a) * 0.72, -0.1],
+          cx, cy, scale, 0.9, 2
+        );
+      }
+    } else if (st.persona === 'detective') {
+      drawRing3D(0.55, 1.24 + bob, 0.12, -0.12, 32, cx, cy, scale, 0.95);
+      drawRing3D(0.22, 0.35 + bob, 0.3, 0.2, 24, cx + scale * 0.55, cy, scale, 0.9);
+    } else if (st.persona === 'engineer') {
+      drawRing3D(0.68, 1.05 + bob, 0.35, Math.sin(t) * 0.3, 36, cx, cy, scale, 0.9);
+      drawRing3D(0.88, 1.05 + bob, -0.35, Math.cos(t) * 0.3, 36, cx, cy, scale, 0.75);
+    }
   }
 
-  particleField.rotation.y = clock * 0.08;
-  composer.render();
+  ctx.globalCompositeOperation = 'source-over';
+  requestAnimationFrame(render);
 }
 
-animate();
+render();
