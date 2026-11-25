@@ -156,8 +156,8 @@ window.sendMessage = async function() {
   });
   let lastError = '';
 
-  for (const model of models) {
-    const endpoint = 'https://googleapis.com' + model + ':generateContent?key=' + encodeURIComponent(apiKey);
+  const slash = String.fromCharCode(47);
+const endpoint = 'https:' + slash + slash + '://googleapis.com' + slash + 'v1beta' + slash + 'models' + slash + model + ':generateContent?key=' + encodeURIComponent(apiKey);
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
