@@ -5,7 +5,8 @@ window.LUMEN_STATE = {
   theme: 'holo',
   vitals: { O: 0.96, E: 0.94, H: 0.92, X: 0.95, lambda: 0.12 },
   attachedContext: '',
-  canonSpine: ''
+  canonSpine: '',
+  chatHistory: []
 };
 const state = window.LUMEN_STATE;
 
@@ -74,8 +75,9 @@ function updateBadge() {
 window.saveApiKey = function() {
   const val = document.getElementById('api-key-input').value.trim();
   if (val) localStorage.setItem('LUMEN_GEMINI_KEY', val);
+  else localStorage.removeItem('LUMEN_GEMINI_KEY');
   document.getElementById('settings-modal').close();
-  logLedger('API key saved locally.');
+  logLedger('Connection preference updated locally.');
 };
 
 function logLedger(entry) {
@@ -139,62 +141,65 @@ window.sendMessage = async function() {
   else if (lower.includes('oracle') || lower.includes('agency') || lower.includes('god') || lower.includes('theolog')) window.setPersona('oracle', document.querySelector('[data-persona="oracle"]'));
 
   window.setForm('lantern');
+  state.chatHistory.push({ role: 'user', content: text });
+  if (state.chatHistory.length > 8) state.chatHistory = state.chatHistory.slice(-8);
+
   const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').trim();
-  if (!apiKey) {
-    setTimeout(() => {
-      appendChat('lumen', 'No GEMINI_API_KEY set yet. Click "API Key" in the top bar to connect my processor.', 'LUMEN // DRY-RUN');
-      window.setForm('character');
-    }, 600);
-    return;
-  }
-
-  const models = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-2.0-flash'];
   const systemPrompt = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
-  const payload = JSON.stringify({
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents: [{ role: 'user', parts: [{ text: text }] }]
-  });
-  let lastError = '';
 
-  const genHost = ['generativelanguage', 'googleapis', 'com'].join('.');
-  const vertexHost = ['aiplatform', 'googleapis', 'com'].join('.');
-
-  for (const model of models) {
-    const endpoints = [
-      ['https', '://', genHost, '/v1beta/models/', model, ':generateContent?key=', encodeURIComponent(apiKey)].join(''),
-      ['https', '://', vertexHost, '/v1/publishers/google/models/', model, ':generateContent?key=', encodeURIComponent(apiKey)].join('')
-    ];
-
-    for (const endpoint of endpoints) {
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
-          continue;
-        }
-        const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
-        if (reply) {
-          state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
-          updateVitalsUI();
-          logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
-          appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
-          window.setForm('character');
-          return;
-        }
-      } catch (err) {
-        lastError = model + ' network error: ' + err.message;
+  if (apiKey && apiKey.startsWith('AIza')) {
+    const genHost = ['generativelanguage', 'googleapis', 'com'].join('.');
+    const endpoint = ['https', '://', genHost, '/v1beta/models/gemini-2.5-flash:generateContent?key=', encodeURIComponent(apiKey)].join('');
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: text }] }]
+        })
+      });
+      const data = await res.json();
+      const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
+      if (res.ok && reply) {
+        finishTurn(reply, 'GEMINI');
+        return;
       }
-    }
+    } catch (_) {}
   }
 
-  appendChat('lumen', 'Connection diagnostic: ' + lastError, 'LUMEN // FAULT');
-  window.setForm('character');
+  const openHost = ['text', 'pollinations', 'ai'].join('.');
+  const openUrl = ['https', '://', openHost, '/'].join('');
+  try {
+    const res = await fetch(openUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'system', content: systemPrompt }, ...state.chatHistory],
+        model: 'openai',
+        seed: Math.floor(Math.random() * 10000)
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reply = await res.text();
+    if (reply && reply.trim()) {
+      finishTurn(reply.trim(), 'OPEN-CORE');
+      return;
+    }
+  } catch (err) {
+    appendChat('lumen', 'Open-core relay error: ' + err.message, 'LUMEN // FAULT');
+    window.setForm('character');
+  }
 };
+
+function finishTurn(reply, engineName) {
+  state.chatHistory.push({ role: 'assistant', content: reply });
+  state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+  updateVitalsUI();
+  logLedger('Delta emitted via ' + engineName + ' in ' + state.persona.toUpperCase() + ' mode.');
+  appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
+  window.setForm('character');
+}
 
 function updateVitalsUI() {
   const { O, E, H, X, lambda } = state.vitals;
