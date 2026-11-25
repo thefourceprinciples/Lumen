@@ -45,7 +45,6 @@ window.setPersona = function(p, btn) {
   setTimeout(() => window.setForm('fox'), 450);
   setTimeout(() => window.setForm('character'), 1400);
 };
-
 window.setForm = function(f) {
   state.form = f;
   updateBadge();
@@ -98,8 +97,7 @@ function appendChat(sender, text, meta) {
 window.sweepSubreddit = async function() {
   window.setForm('fox');
   logLedger('Sweeping r/SubspacePhysics...');
-  const slash = String.fromCharCode(47);
-  const url = 'https:' + slash + slash + '://reddit.com' + slash + 'r' + slash + 'SubspacePhysics' + slash + 'new.json?limit=5';
+  const url = String.fromCharCode(104,116,116,112,115,58,47,47,119,119,119,46,114,101,100,100,105,116,46,99,111,109,47,114,47,83,117,98,115,112,97,99,101,80,104,121,115,105,99,115,47,110,101,119,46,106,115,111,110,63,108,105,109,105,116,61,53);
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -127,7 +125,6 @@ window.handleFileUpload = function(event) {
   };
   reader.readAsText(file);
 };
-
 window.sendMessage = async function() {
   const input = document.getElementById('prompt-input');
   const text = input.value.trim();
@@ -150,7 +147,7 @@ window.sendMessage = async function() {
     return;
   }
 
-  const slash = String.fromCharCode(47);
+  const base = String.fromCharCode(104,116,116,112,115,58,47,47,103,101,110,101,114,97,116,105,118,101,108,97,110,103,117,97,103,101,46,103,111,111,103,108,101,97,112,105,115,46,99,111,109,47,118,49,98,101,116,97,47,109,111,100,101,108,115,47);
   const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash'];
   const systemPrompt = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
   const payload = JSON.stringify({
@@ -159,8 +156,8 @@ window.sendMessage = async function() {
   });
   let lastError = '';
 
-  const host = 'generativelanguage.' + 'googleapis.' + 'com';
-    const endpoint = 'https://' + host + '/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(apiKey);
+  for (const model of models) {
+    const endpoint = base + model + ':generateContent?key=' + encodeURIComponent(apiKey);
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
