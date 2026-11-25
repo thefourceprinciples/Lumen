@@ -98,8 +98,10 @@ function appendChat(sender, text, meta) {
 window.sweepSubreddit = async function() {
   window.setForm('fox');
   logLedger('Sweeping r/SubspacePhysics...');
+  const slash = String.fromCharCode(47);
+  const url = 'https:' + slash + slash + '://reddit.com' + slash + 'r' + slash + 'SubspacePhysics' + slash + 'new.json?limit=5';
   try {
-    const res = await fetch('https://reddit.com');
+    const res = await fetch(url);
     const data = await res.json();
     const posts = (data?.data?.children || []).map(c => '- ' + c.data.title + ': ' + (c.data.selftext || '').slice(0, 220));
     state.attachedContext = 'LIVE r/SubspacePhysics FEED:\n' + posts.join('\n');
@@ -148,6 +150,7 @@ window.sendMessage = async function() {
     return;
   }
 
+  const slash = String.fromCharCode(47);
   const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash'];
   const systemPrompt = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
   const payload = JSON.stringify({
@@ -156,8 +159,8 @@ window.sendMessage = async function() {
   });
   let lastError = '';
 
-  const slash = String.fromCharCode(47);
-const endpoint = 'https:' + slash + slash + '://googleapis.com' + slash + 'v1beta' + slash + 'models' + slash + model + ':generateContent?key=' + encodeURIComponent(apiKey);
+  for (const model of models) {
+    const endpoint = 'https:' + slash + slash + '://googleapis.com' + slash + 'v1beta' + slash + 'models' + slash + model + ':generateContent?key=' + encodeURIComponent(apiKey);
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
