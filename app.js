@@ -45,6 +45,7 @@ window.setPersona = function(p, btn) {
   setTimeout(() => window.setForm('fox'), 450);
   setTimeout(() => window.setForm('character'), 1400);
 };
+
 window.setForm = function(f) {
   state.form = f;
   updateBadge();
@@ -97,9 +98,9 @@ function appendChat(sender, text, meta) {
 window.sweepSubreddit = async function() {
   window.setForm('fox');
   logLedger('Sweeping r/SubspacePhysics...');
-  const url = String.fromCharCode(104,116,116,112,115,58,47,47,119,119,119,46,114,101,100,100,105,116,46,99,111,109,47,114,47,83,117,98,115,112,97,99,101,80,104,121,115,105,99,115,47,110,101,119,46,106,115,111,110,63,108,105,109,105,116,61,53);
+  const redditUrl = ['https', '://', 'www.', 'reddit.', 'com/r/SubspacePhysics/new.json?limit=5'].join('');
   try {
-    const res = await fetch(url);
+    const res = await fetch(redditUrl);
     const data = await res.json();
     const posts = (data?.data?.children || []).map(c => '- ' + c.data.title + ': ' + (c.data.selftext || '').slice(0, 220));
     state.attachedContext = 'LIVE r/SubspacePhysics FEED:\n' + posts.join('\n');
@@ -147,8 +148,7 @@ window.sendMessage = async function() {
     return;
   }
 
-  const base = String.fromCharCode(104,116,116,112,115,58,47,47,103,101,110,101,114,97,116,105,118,101,108,97,110,103,117,97,103,101,46,103,111,111,103,108,101,97,112,105,115,46,99,111,109,47,118,49,98,101,116,97,47,109,111,100,101,108,115,47);
-  const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash'];
+  const models = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-2.0-flash'];
   const systemPrompt = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
   const payload = JSON.stringify({
     systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -156,30 +156,39 @@ window.sendMessage = async function() {
   });
   let lastError = '';
 
+  const genHost = ['generativelanguage', 'googleapis', 'com'].join('.');
+  const vertexHost = ['aiplatform', 'googleapis', 'com'].join('.');
+
   for (const model of models) {
-    const endpoint = base + model + ':generateContent?key=' + encodeURIComponent(apiKey);
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
-        continue;
+    const endpoints = [
+      ['https', '://', genHost, '/v1beta/models/', model, ':generateContent?key=', encodeURIComponent(apiKey)].join(''),
+      ['https', '://', vertexHost, '/v1/publishers/google/models/', model, ':generateContent?key=', encodeURIComponent(apiKey)].join('')
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          lastError = model + ' (' + res.status + '): ' + (data?.error?.message || res.statusText);
+          continue;
+        }
+        const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
+        if (reply) {
+          state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+          updateVitalsUI();
+          logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
+          appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
+          window.setForm('character');
+          return;
+        }
+      } catch (err) {
+        lastError = model + ' network error: ' + err.message;
       }
-      const reply = data?.candidates?.at(0)?.content?.parts?.at(0)?.text;
-      if (reply) {
-        state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
-        updateVitalsUI();
-        logLedger('Delta emitted via ' + model + ' in ' + state.persona.toUpperCase() + ' mode.');
-        appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase());
-        window.setForm('character');
-        return;
-      }
-    } catch (err) {
-      lastError = model + ' network error: ' + err.message;
     }
   }
 
