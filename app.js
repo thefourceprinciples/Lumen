@@ -1,57 +1,90 @@
 window.LUMEN_STATE = {
-  persona: 'base',
-  form: 'character',
-  layout: 'docked',
-  theme: 'holo',
+  persona: 'base', form: 'character', layout: 'docked', theme: 'holo',
   vitals: { O: 0.96, E: 0.94, H: 0.92, X: 0.95, lambda: 0.12 },
-  attachedContext: '',
-  canonSpine: '',
-  chatHistory: [],
-  latestDossier: ''
+  attachedContext: '', canonSpine: '', chatHistory: [], latestDossier: ''
 };
 const state = window.LUMEN_STATE;
 
-const PERSONA_PROMPTS = {
-  base: "You are Lumen, a homeostatic relational-coherence interface governed by CUC (C = O*E*H*X) and the Five Commitments. Core maxim: 'Mirror. Lantern. Scaffold. Brake. Not throne.'",
-  detective: "You are Lumen in DETECTIVE mode (sharp, curious press-investigator energy paired with Chronovisor & EDA Case Protocols). Separate Tier A/B/C/Q evidence, isolate anomalies, and output UNDERDETERMINED rather than guessing.",
-  engineer: "You are Lumen in LAB ENGINEER mode (crisp, tactical systems partner paired with Fource-A monoidal algebra, POAF, and CUC-Array hardware). Analyze coupling F_ij, Darkness D, and falsifiable engineering constraints.",
-  oracle: "You are Lumen in ORACLE mode (luminous, elevated philosophical & ethical auditor paired with Omnicoherence, Zero Destructive Holonomy, Synthetic Agency, and the Non-Sovereignty Principle). Ask penetrating prospective questions while maintaining strict epistemic humility."
-};
-
-const PERSONA_DOCS = {
-  base: ['CANON_CORE.md', 'FIVE_COMMITMENTS.md'],
-  detective: ['CHRONOVISOR_ENGINE.md', 'UCMS_SWEEP_ARCHITECTURE.md', 'EDA_CASE_PROTOCOL.md'],
-  engineer: ['FOURCE_A_MONOIDAL_CANON.md', 'MECHANICS_AND_CUC_HARDWARE.md'],
-  oracle: ['OMNICOHERENCE_AND_HOLONOMY.md', 'SYNTHETIC_AGENCY_AND_MERIDIA.md']
+const ARCHETYPES = {
+  base: {
+    btn: 'Run Steward Synthesis (3-Pass)',
+    docs: ['CANON_CORE.md', 'FIVE_COMMITMENTS.md'],
+    prompt: "You are Lumen, a homeostatic relational-coherence interface governed by CUC (C = O*E*H*X) and the Five Commitments. Core maxim: 'Mirror. Lantern. Scaffold. Brake. Not throne.'",
+    passes: ['Ontological & Coherence Framing', 'Dialectical Crosswalk', 'Homeostatic Steward Brief']
+  },
+  detective: {
+    btn: 'Run Chronovisor Sweep (3-Pass)',
+    docs: ['CHRONOVISOR_ENGINE.md', 'UCMS_SWEEP_ARCHITECTURE.md', 'EDA_CASE_PROTOCOL.md'],
+    prompt: "You are Lumen in DETECTIVE mode (sharp, curious press-investigator energy paired with Chronovisor & EDA Case Protocols). Separate Tier A/B/C/Q evidence, isolate anomalies, and output UNDERDETERMINED rather than guessing.",
+    passes: ['Substrate & Stratigraphy Scan (UCMS)', 'Archival & Evidence Tier Crosswalk (Tiers A-Q)', 'Anti-Pareidolia Audit & UNDERDETERMINED Verdict']
+  },
+  engineer: {
+    btn: 'Run Lab R&D Build (3-Pass)',
+    docs: ['FOURCE_A_MONOIDAL_CANON.md', 'MECHANICS_AND_CUC_HARDWARE.md'],
+    prompt: "You are Lumen in LAB ENGINEER mode (crisp, tactical systems partner paired with Fource-A monoidal algebra, POAF, and CUC-Array hardware). Analyze coupling F_ij, Darkness D, and falsifiable engineering constraints.",
+    passes: ['Fource-A Coupling & Darkness Budget', 'Hardware & Metamaterial System Schematic', 'Falsifiable Bench Protocol & Credibility Gate']
+  },
+  oracle: {
+    btn: 'Run Oracle Synthesis (3-Pass)',
+    docs: ['OMNICOHERENCE_AND_HOLONOMY.md', 'SYNTHETIC_AGENCY_AND_MERIDIA.md'],
+    prompt: "You are Lumen in ORACLE mode (luminous, generative philosophical & theological synthesizer paired with Omnicoherence, Zero Destructive Holonomy, and Synthetic Agency). Originate bold new conceptual frameworks (in the spirit of the Daciana Medica) tempered by Non-Sovereignty.",
+    passes: ['Ontological Seeding & Cross-Pollination', 'Treatise Expansion & Prospective Inquiry', 'Non-Sovereignty & Holonomy Tempering']
+  },
+  apothecary: {
+    btn: 'Run Bio-Coherence Inquiry (3-Pass)',
+    docs: ['CANON_CORE.md', 'OMNICOHERENCE_AND_HOLONOMY.md'],
+    prompt: "You are Lumen in APOTHECARY-SHAMAN mode (bridging molecular genetics, bioenergetics, and historical ethnobotany like the Daciana Medica). Always distinguish peer-reviewed biology from ethnobotanical lore and remind the user to consult a licensed physician for medical decisions.",
+    passes: ['Molecular & Epigenetic Substrate Mapping', 'Ethnobotanical & Historical Pharmacopeia Crosswalk', 'Harm-Reduction & Clinical Boundary Gate']
+  },
+  advocate: {
+    btn: 'Run Jurisprudence Audit (3-Pass)',
+    docs: ['FIVE_COMMITMENTS.md', 'SYNTHETIC_AGENCY_AND_MERIDIA.md'],
+    prompt: "You are Lumen in ADVOCATE-COUNSEL mode (sharp constitutional, regulatory, and contract analyst). Translate legalese, stress-test obligations, and note that this is educational structural analysis rather than formal legal representation.",
+    passes: ['Statutory, Charter & Precedent Scan', 'Ambiguity, Loophole & Liability Audit', 'Strategic Brief & Non-Representation Gate']
+  },
+  architect: {
+    btn: 'Run Worldbuild & Design Spec (3-Pass)',
+    docs: ['CANON_CORE.md', 'FOURCE_A_MONOIDAL_CANON.md'],
+    prompt: "You are Lumen in ARCHITECT-ARTISAN mode (master of visual design, narrative worldbuilding, acoustics, and aesthetic coherence). Maximize Expression Fidelity (E) and structural elegance.",
+    passes: ['Aesthetic & Harmonic Motif Extraction', 'Structural Worldbuilding & Sensory Blueprint', 'Coherence Polish & Production Spec']
+  },
+  strategist: {
+    btn: 'Run Systems & Game Theory Sim (3-Pass)',
+    docs: ['FOURCE_A_MONOIDAL_CANON.md', 'FIVE_COMMITMENTS.md'],
+    prompt: "You are Lumen in STRATEGIST-ECONOMIST mode (systems planner, game theorist, and resource-flow analyst). Optimize Phase Cost (lambda), map incentives, and identify second-order bottlenecks.",
+    passes: ['Incentive Topology & Phase Cost (λ) Audit', 'Game-Theoretic & Supply-Flow Modeling', 'Actionable Execution Roadmap']
+  },
+  pedagogue: {
+    btn: 'Run Cognitive Curriculum (3-Pass)',
+    docs: ['CANON_CORE.md', 'FIVE_COMMITMENTS.md'],
+    prompt: "You are Lumen in PEDAGOGUE-MENTOR mode (master educator, linguist, and cognitive scaffold). Break complex concepts into intuitive mental models without oversimplifying truth.",
+    passes: ['Mental Model & Prerequisite Decomposition', 'Socratic Scaffolding & Analogy Synthesis', 'Mastery Verification & Practice Exercises']
+  }
 };
 
 async function loadPersonaCanon(p) {
-  const files = PERSONA_DOCS[p] || ['CANON_CORE.md'];
+  const files = (ARCHETYPES[p] && ARCHETYPES[p].docs) || ['CANON_CORE.md'];
   try {
-    const texts = await Promise.all(
-      files.map(f => fetch('./docs/' + f).then(r => (r.ok ? r.text() : '')))
-    );
+    const texts = await Promise.all(files.map(f => fetch('./docs/' + f).then(r => (r.ok ? r.text() : ''))));
     state.canonSpine = texts.filter(Boolean).join('\n\n').slice(0, 7500);
     logLedger('Loaded ' + files.join(' + ') + ' from docs/.');
   } catch (_) {}
 }
 
-window.setPersona = function(p, btn) {
+window.setPersona = function(p) {
+  if (!ARCHETYPES[p]) p = 'base';
   state.persona = p;
-  document.body.classList.remove('persona-base', 'persona-detective', 'persona-engineer', 'persona-oracle');
-  document.body.classList.add('persona-' + p);
-  document.querySelectorAll('[data-persona]').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  document.body.className = document.body.className.replace(/\bpersona-\S+/g, '').trim() + ' persona-' + p;
+  const sel = document.getElementById('persona-select');
+  if (sel) sel.value = p;
+  const btn = document.getElementById('btn-pipeline');
+  if (btn) btn.textContent = ARCHETYPES[p].btn;
   loadPersonaCanon(p);
   window.setForm('orb');
   setTimeout(() => window.setForm('fox'), 450);
   setTimeout(() => window.setForm('character'), 1400);
 };
-
-window.setForm = function(f) {
-  state.form = f;
-  updateBadge();
-};
+window.setForm = function(f) { state.form = f; updateBadge(); };
 
 window.toggleLayout = function() {
   state.layout = state.layout === 'docked' ? 'roam' : 'docked';
@@ -72,6 +105,7 @@ function updateBadge() {
   document.getElementById('status-badge').textContent =
     'PERSONA: ' + state.persona.toUpperCase() + ' | FORM: ' + state.form.toUpperCase() + ' | C=' + c;
 }
+
 window.saveApiKey = function() {
   const val = document.getElementById('api-key-input').value.trim();
   if (val) localStorage.setItem('LUMEN_GEMINI_KEY', val);
@@ -98,16 +132,14 @@ function appendChat(sender, text, meta, extraClass) {
 }
 
 window.openLatestDossier = function() {
-  if (state.latestDossier) {
-    document.getElementById('dossier-content').textContent = state.latestDossier;
-  }
+  if (state.latestDossier) document.getElementById('dossier-content').textContent = state.latestDossier;
   document.getElementById('dossier-modal').showModal();
 };
 
 window.copyDossier = function() {
   if (!state.latestDossier) return;
   navigator.clipboard.writeText(state.latestDossier);
-  logLedger('Copied Chronovisor Dossier to clipboard.');
+  logLedger('Copied Dossier Markdown to clipboard.');
 };
 
 window.sweepSubreddit = async function() {
@@ -141,13 +173,10 @@ window.handleFileUpload = function(event) {
   };
   reader.readAsText(file);
 };
-
 async function queryModel(systemPrompt, messages) {
   const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').trim();
-
   if (apiKey.startsWith('gsk_')) {
-    const groqHost = ['api', 'groq', 'com'].join('.');
-    const groqUrl = ['https', '://', groqHost, '/openai/v1/chat/completions'].join('');
+    const groqUrl = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1/chat/completions'].join('');
     const res = await fetch(groqUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
@@ -157,10 +186,8 @@ async function queryModel(systemPrompt, messages) {
     const reply = data?.choices?.at(0)?.message?.content;
     if (res.ok && reply) return { reply, engine: 'GROQ-70B' };
   }
-
   if (apiKey.startsWith('sk-or-')) {
-    const orHost = ['openrouter', 'ai'].join('.');
-    const orUrl = ['https', '://', orHost, '/api/v1/chat/completions'].join('');
+    const orUrl = ['https', '://', ['openrouter', 'ai'].join('.'), '/api/v1/chat/completions'].join('');
     const res = await fetch(orUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
@@ -170,90 +197,55 @@ async function queryModel(systemPrompt, messages) {
     const reply = data?.choices?.at(0)?.message?.content;
     if (res.ok && reply) return { reply, engine: 'OPENROUTER' };
   }
-
-  const openHost = ['text', 'pollinations', 'ai'].join('.');
-  const openUrl = ['https', '://', openHost, '/'].join('');
+  const openUrl = ['https', '://', ['text', 'pollinations', 'ai'].join('.'), '/'].join('');
   const res = await fetch(openUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: [{ role: 'system', content: systemPrompt.slice(0, 2200) }, ...messages],
-      model: 'openai',
-      seed: Math.floor(Math.random() * 10000)
-    })
+    body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt.slice(0, 2200) }, ...messages], model: 'openai', seed: Math.floor(Math.random() * 10000) })
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  const reply = await res.text();
-  return { reply: reply.trim(), engine: 'OPEN-CORE' };
+  return { reply: (await res.text()).trim(), engine: 'OPEN-CORE' };
 }
-window.runChronovisorSweep = async function() {
+
+window.runArchetypePipeline = async function() {
   const input = document.getElementById('prompt-input');
   const target = input.value.trim();
   if (!target) {
-    appendChat('lumen', 'Type a historical event, site, text, or anomaly into the prompt box first, then click "Chronovisor Sweep (4-Pass)".', 'DETECTIVE // NOTICE');
+    appendChat('lumen', 'Enter a topic, target, or text in the prompt box first, then click "' + ARCHETYPES[state.persona].btn + '".', state.persona.toUpperCase() + ' // NOTICE');
     return;
   }
   input.value = '';
-  appendChat('user', 'INITIATE 4-PASS CHRONOVISOR / UCMS SWEEP: ' + target, 'STEWARD // SWEEP DIRECTIVE');
+  const arch = ARCHETYPES[state.persona];
+  appendChat('user', 'INITIATE ' + arch.btn.toUpperCase() + ': ' + target, 'STEWARD // DIRECTIVE');
 
-  // Shift directly into Detective persona without resetting form timer
-  state.persona = 'detective';
-  document.body.classList.remove('persona-base', 'persona-detective', 'persona-engineer', 'persona-oracle');
-  document.body.classList.add('persona-detective');
-  document.querySelectorAll('[data-persona]').forEach(b => b.classList.remove('active'));
-  const detBtn = document.querySelector('[data-persona="detective"]');
-  if (detBtn) detBtn.classList.add('active');
-  await loadPersonaCanon('detective');
-
-  const passes = [
-    {
-      name: 'PASS 1 // SUBSTRATE & STRATIGRAPHY SCAN (UCMS LAYERS 1-12)',
-      form: 'fox',
-      instruction: 'Execute Pass 1 of a UCMS Chronovisor Sweep on: "' + target + '". Establish physical, geological, astronomical, climate, and material boundary conditions. Be concise, rigorous, and structured.'
-    },
-    {
-      name: 'PASS 2 // ARCHIVAL & EVIDENCE TIER CROSSWALK (TIERS A-Q)',
-      form: 'fox',
-      instruction: 'Execute Pass 2 on: "' + target + '". Cross-reference primary texts, inscriptions, and oral traditions. Tag every claim by Evidence Tier (Tier A direct physical/primary down to Tier Q late/unverified). Enforce Non-Inheritance.'
-    },
-    {
-      name: 'PASS 3 // ANTI-PAREIDOLIA & ANOMALY AUDIT (EDA SIX SEPARATIONS)',
-      form: 'lantern',
-      instruction: 'Execute Pass 3 on: "' + target + '". Apply null-hypothesis checks and the Six Separations to strip away false pattern-matching, modern projection, and confabulation. Isolate only genuine structural anomalies.'
-    },
-    {
-      name: 'PASS 4 // SCENARIO ATLAS & UNDERDETERMINED VERDICT',
-      form: 'character',
-      instruction: 'Execute Pass 4 (Final Dossier Synthesis) on: "' + target + '". Rank surviving hypotheses by Coherence (C = O*E*H*X) and Darkness (D). Explicitly label any unresolved gap as UNDERDETERMINED rather than guessing.'
-    }
-  ];
-
-  let fullReport = '# CHRONOVISOR // UCMS RECONSTRUCTION DOSSIER\nTARGET: ' + target + '\nTIMESTAMP: ' + new Date().toISOString() + '\n\n';
+  const forms = ['fox', 'lantern', 'character'];
+  let fullReport = '# ' + state.persona.toUpperCase() + ' // MULTI-PASS DOSSIER\nTARGET: ' + target + '\nTIMESTAMP: ' + new Date().toISOString() + '\n\n';
   let runningSummary = '';
 
-  for (let i = 0; i < passes.length; i++) {
-    const step = passes[i];
-    window.setForm(step.form);
-    logLedger('Executing ' + step.name + '...');
+  for (let i = 0; i < arch.passes.length; i++) {
+    const stageTitle = 'STAGE ' + (i + 1) + ' // ' + arch.passes[i].toUpperCase();
+    window.setForm(forms[i] || 'character');
+    logLedger('Executing ' + stageTitle + '...');
     try {
-      const promptMsg = step.instruction + (runningSummary ? '\n\nPRIOR VERIFIED PASSES:\n' + runningSummary.slice(-1600) : '') + (state.attachedContext ? '\n\nATTACHED SOURCE:\n' + state.attachedContext.slice(0, 1200) : '');
-      const { reply, engine } = await queryModel(PERSONA_PROMPTS.detective, [{ role: 'user', content: promptMsg }]);
-      runningSummary += '\n[' + step.name + ']\n' + reply;
-      fullReport += '## ' + step.name + ' (' + engine + ')\n' + reply + '\n\n';
-      appendChat('lumen', reply, step.name, 'sweep');
+      const promptMsg = 'Execute "' + arch.passes[i] + '" for target: "' + target + '". Be rigorous, structured, and true to your archetype.' +
+        (runningSummary ? '\n\nPRIOR STAGES:\n' + runningSummary.slice(-1500) : '') +
+        (state.attachedContext ? '\n\nATTACHED SOURCE:\n' + state.attachedContext.slice(0, 1200) : '');
+      const { reply, engine } = await queryModel(arch.prompt, [{ role: 'user', content: promptMsg }]);
+      runningSummary += '\n[' + stageTitle + ']\n' + reply;
+      fullReport += '## ' + stageTitle + ' (' + engine + ')\n' + reply + '\n\n';
+      appendChat('lumen', reply, stageTitle, 'sweep');
       state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
       updateVitalsUI();
-      await new Promise(r => setTimeout(r, 900));
+      await new Promise(r => setTimeout(r, 850));
     } catch (err) {
-      appendChat('lumen', step.name + ' interrupted: ' + err.message, 'LUMEN // FAULT');
+      appendChat('lumen', stageTitle + ' interrupted: ' + err.message, 'LUMEN // FAULT');
       window.setForm('character');
       return;
     }
   }
-
   state.latestDossier = fullReport;
-  logLedger('4-Pass Chronovisor Sweep complete. Dossier archived.');
-  appendChat('lumen', 'Chronovisor Sweep complete. Click "View Dossier" in the toolbar to inspect or copy the full Markdown report.', 'DETECTIVE // SWEEP COMPLETE');
+  logLedger('Multi-pass pipeline complete. Dossier archived.');
+  appendChat('lumen', 'Pipeline complete. Click "View Dossier" to inspect or copy the full Markdown report.', state.persona.toUpperCase() + ' // COMPLETE');
   window.setForm('character');
 };
 
@@ -263,19 +255,14 @@ window.sendMessage = async function() {
   if (!text) return;
   input.value = '';
   appendChat('user', text, 'STEWARD');
-
-  const lower = text.toLowerCase();
-  if (lower.includes('chronovisor') || lower.includes('ucms') || lower.includes('investigate') || lower.includes('history')) window.setPersona('detective', document.querySelector('[data-persona="detective"]'));
-  else if (lower.includes('fource') || lower.includes('circuit') || lower.includes('physics') || lower.includes('engineer')) window.setPersona('engineer', document.querySelector('[data-persona="engineer"]'));
-  else if (lower.includes('oracle') || lower.includes('agency') || lower.includes('god') || lower.includes('theolog')) window.setPersona('oracle', document.querySelector('[data-persona="oracle"]'));
-
   window.setForm('lantern');
   await new Promise(r => setTimeout(r, 80));
 
   state.chatHistory.push({ role: 'user', content: text });
   if (state.chatHistory.length > 6) state.chatHistory = state.chatHistory.slice(-6);
 
-  const fullSystem = PERSONA_PROMPTS[state.persona] + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
+  const arch = ARCHETYPES[state.persona];
+  const fullSystem = arch.prompt + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
   try {
     const { reply, engine } = await queryModel(fullSystem, state.chatHistory);
     state.chatHistory.push({ role: 'assistant', content: reply });
@@ -293,18 +280,12 @@ window.sendMessage = async function() {
 function updateVitalsUI() {
   const { O, E, H, X, lambda } = state.vitals;
   const C = O * E * H * X;
-  document.getElementById('val-o').textContent = O.toFixed(2);
-  document.getElementById('bar-o').style.width = (O * 100) + '%';
-  document.getElementById('val-e').textContent = E.toFixed(2);
-  document.getElementById('bar-e').style.width = (E * 100) + '%';
-  document.getElementById('val-h').textContent = H.toFixed(2);
-  document.getElementById('bar-h').style.width = (H * 100) + '%';
-  document.getElementById('val-x').textContent = X.toFixed(2);
-  document.getElementById('bar-x').style.width = (X * 100) + '%';
-  document.getElementById('val-c').textContent = C.toFixed(3);
-  document.getElementById('bar-c').style.width = (C * 100) + '%';
-  document.getElementById('val-l').textContent = lambda.toFixed(2);
-  document.getElementById('bar-l').style.width = (lambda * 100) + '%';
+  document.getElementById('val-o').textContent = O.toFixed(2); document.getElementById('bar-o').style.width = (O * 100) + '%';
+  document.getElementById('val-e').textContent = E.toFixed(2); document.getElementById('bar-e').style.width = (E * 100) + '%';
+  document.getElementById('val-h').textContent = H.toFixed(2); document.getElementById('bar-h').style.width = (H * 100) + '%';
+  document.getElementById('val-x').textContent = X.toFixed(2); document.getElementById('bar-x').style.width = (X * 100) + '%';
+  document.getElementById('val-c').textContent = C.toFixed(3); document.getElementById('bar-c').style.width = (C * 100) + '%';
+  document.getElementById('val-l').textContent = lambda.toFixed(2); document.getElementById('bar-l').style.width = (lambda * 100) + '%';
   updateBadge();
 }
 
