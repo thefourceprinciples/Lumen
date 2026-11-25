@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lumen — Homeostatic CUC Runtime & 8-Archetype Observatory</title>
+  <title>Lumen — 8-Archetype Observatory</title>
   <style>
     :root {
       --bg-primary: #060913;
@@ -95,7 +95,23 @@
       color: var(--text-main); border-radius: 8px; padding: 8px;
       font-family: var(--font-ui); font-size: 0.85rem; resize: none; height: 54px;
     }
-    dialog {<body class="layout-docked theme-holo persona-base">
+    dialog {
+      margin: auto; background: #0d1324; color: #e2e8f0; border: 1px solid var(--accent);
+      border-radius: 12px; padding: 20px; width: 92%; max-width: 560px;
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.75); }
+    dialog input {
+      width: 100%; padding: 8px; margin: 8px 0 14px; background: #060913;
+      border: 1px solid #334155; color: #fff; border-radius: 6px; font-family: var(--font-mono);
+    }
+    .dossier-body {
+      max-height: 58vh; overflow-y: auto; background: #060913; border: 1px solid #334155;
+      border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 0.84rem;
+      line-height: 1.55; white-space: pre-wrap; font-family: var(--font-ui);
+    }
+  </style>
+</head>
+<body class="layout-docked theme-holo persona-base">
   <header>
     <div class="brand">
       <div>LUMEN // OCTAGON OBSERVATORY</div>
@@ -189,23 +205,7 @@
     </div>
   </dialog>
 
-  <script src="./app.js?v=30"></script>
-  <script src="./avatar3d.js?v=30"></script>
+  <script src="./app.js?v=31"></script>
+  <script src="./avatar3d.js?v=31"></script>
 </body>
 </html>
-
-      margin: auto; background: #0d1324; color: #e2e8f0; border: 1px solid var(--accent);
-      border-radius: 12px; padding: 20px; width: 92%; max-width: 560px;
-    }
-    dialog::backdrop { background: rgba(0,0,0,0.75); }
-    dialog input {
-      width: 100%; padding: 8px; margin: 8px 0 14px; background: #060913;
-      border: 1px solid #334155; color: #fff; border-radius: 6px; font-family: var(--font-mono);
-    }
-    .dossier-body {
-      max-height: 58vh; overflow-y: auto; background: #060913; border: 1px solid #334155;
-      border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 0.84rem;
-      line-height: 1.55; white-space: pre-wrap; font-family: var(--font-ui);
-    }
-  </style>
-</head>
