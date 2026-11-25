@@ -1,104 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lumen — Homeostatic CUC Runtime & Observatory</title>
-  <style>
-    :root {
-      --bg-primary: #060913;
-      --bg-panel: rgba(13, 19, 36, 0.88);
-      --border-glow: rgba(56, 189, 248, 0.32);
-      --text-main: #e2e8f0;
-      --accent: #38bdf8;
-      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-    }
-    body.theme-arcane {
-      --bg-primary: #120d08;
-      --bg-panel: rgba(28, 20, 13, 0.90);
-      --border-glow: rgba(217, 155, 67, 0.42);
-      --text-main: #f5ebd6;
-      --accent: #e5a93c;
-    }
-    body.persona-detective { --accent: #f59e0b; }
-    body.persona-engineer  { --accent: #38bdf8; }
-    body.persona-oracle    { --accent: #fde047; }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg-primary); color: var(--text-main);
-      font-family: var(--font-ui); height: 100vh; overflow: hidden;
-      display: flex; flex-direction: column;
-    }
-    header {
-      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-      gap: 10px; padding: 10px 18px; background: var(--bg-panel);
-      border-bottom: 1px solid var(--border-glow); z-index: 20;
-    }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.08em; }
-    .brand span { color: var(--accent); font-family: var(--font-mono); font-size: 0.8rem; }
-    .controls-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    button {
-      background: rgba(255, 255, 255, 0.05); color: var(--text-main);
-      border: 1px solid var(--border-glow); padding: 5px 10px; border-radius: 6px;
-      font-size: 0.78rem; cursor: pointer; font-family: var(--font-mono);
-    }
-    button:hover, button.active { background: var(--accent); color: #060913; font-weight: 600; }
-    main {
-      position: relative; flex: 1; display: grid;
-      grid-template-columns: 300px 1fr 380px; gap: 14px; padding: 14px; overflow: hidden;
-    }
-    body.layout-roam main { display: block; }
-    #avatar-stage {
-      position: relative; width: 100%; height: 100%;
-      border: 1px solid var(--border-glow); border-radius: 12px; overflow: hidden; z-index: 5;
-      background: radial-gradient(circle at center, rgba(56,189,248,0.08), transparent 75%);
-    }
-    body.layout-roam #avatar-stage { position: absolute; inset: 0; border: none; border-radius: 0; }
-    .panel {
-      background: var(--bg-panel); border: 1px solid var(--border-glow); border-radius: 12px;
-      padding: 14px; display: flex; flex-direction: column; gap: 12px; z-index: 10; overflow-y: auto;
-    }
-    body.layout-roam .panel-left { position: absolute; top: 14px; left: 14px; width: 290px; max-height: calc(100vh - 84px); }
-    body.layout-roam .panel-right { position: absolute; top: 14px; right: 14px; width: 390px; height: calc(100vh - 84px); }
-    h2 {
-      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--accent); font-family: var(--font-mono);
-      border-bottom: 1px solid var(--border-glow); padding-bottom: 6px;
-    }
-    .vital-row { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; font-family: var(--font-mono); }
-    .vital-head { display: flex; justify-content: space-between; }
-    .bar-track { height: 6px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; }
-    .ledger-box {
-      font-family: var(--font-mono); font-size: 0.72rem; background: rgba(0,0,0,0.3);
-      padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);
-      max-height: 220px; overflow-y: auto; line-height: 1.45;
-    }
-    #chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
-    .msg { padding: 10px 12px; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; }
-    .msg.user { background: rgba(255,255,255,0.07); align-self: flex-end; max-width: 88%; }
-    .msg.lumen { background: rgba(56,189,248,0.09); border: 1px solid var(--border-glow); align-self: flex-start; max-width: 94%; }
-    .msg-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); margin-bottom: 4px; }
-    .tool-strip { display: flex; flex-wrap: wrap; gap: 6px; }
-    .input-row { display: flex; gap: 6px; }
-    textarea {
-      flex: 1; background: rgba(0,0,0,0.35); border: 1px solid var(--border-glow);
-      color: var(--text-main); border-radius: 8px; padding: 8px;
-      font-family: var(--font-ui); font-size: 0.85rem; resize: none; height: 54px;
-    }
-    dialog {
-      margin: auto; background: #0d1324; color: #e2e8f0; border: 1px solid var(--accent);
-      border-radius: 12px; padding: 20px; width: 90%; max-width: 440px;
-    }
-    dialog::backdrop { background: rgba(0,0,0,0.7); }
-    dialog input {
-      width: 100%; padding: 8px; margin: 8px 0 14px; background: #060913;
-      border: 1px solid #334155; color: #fff; border-radius: 6px; font-family: var(--font-mono);
-    }
-  </style>
-</head>
 <body class="layout-docked theme-holo persona-base">
   <header>
     <div class="brand">
@@ -145,37 +44,48 @@
     <section class="panel panel-right">
       <h2>Interactive Steward Console</h2>
       <div class="tool-strip">
+        <button onclick="runChronovisorSweep()">Chronovisor Sweep (4-Pass)</button>
         <button onclick="sweepSubreddit()">Sweep r/SubspacePhysics</button>
-        <button onclick="document.getElementById('file-input').click()">Parse File (.md/.txt/.json)</button>
+        <button onclick="document.getElementById('file-input').click()">Parse File</button>
+        <button onclick="openLatestDossier()">View Dossier</button>
         <input type="file" id="file-input" accept=".txt,.md,.json,.csv" style="display:none" onchange="handleFileUpload(event)" />
       </div>
       <div id="chat-log">
         <div class="msg lumen">
           <div class="msg-meta">LUMEN // 3D STEWARD INTERFACE</div>
-          Hold the pattern. Drag across the 3D stage to orbit my hologram, switch personas above, or enter a prompt below.
+          Hold the pattern. Enter a historical event, site, or anomaly below and click "Chronovisor Sweep (4-Pass)" for a full UCMS/EDA reconstruction, or chat normally.
         </div>
       </div>
       <div class="input-row">
-        <textarea id="prompt-input" placeholder="Ask Lumen, initiate a Chronovisor sweep, or test an invariant..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+        <textarea id="prompt-input" placeholder="Enter a target for a Chronovisor Sweep, or ask Lumen..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
         <button onclick="sendMessage()">Send</button>
       </div>
     </section>
   </main>
 
   <dialog id="settings-modal">
-    <h2 style="margin-bottom:10px;">Lumen Browser Connection</h2>
+    <h2 style="margin-bottom:10px;">Lumen Engine Connection</h2>
     <p style="font-size:0.8rem; color:#94a3b8; line-height:1.4;">
-      Your Gemini API key is stored locally in this browser's <code>localStorage</code> and never sent anywhere except Google's Gemini API.
+      Optional: Paste a free email-only API key from Groq (<code>gsk_...</code>) or OpenRouter (<code>sk-or-...</code>) for high-speed 70B sweeps, or leave blank to use the built-in keyless Open-Core engine.
     </p>
-    <label style="font-size:0.75rem; display:block; margin-top:12px;">GEMINI_API_KEY</label>
-    <input type="password" id="api-key-input" placeholder="Paste your Gemini API key..." />
+    <label style="font-size:0.75rem; display:block; margin-top:12px;">API_KEY (Optional)</label>
+    <input type="password" id="api-key-input" placeholder="gsk_... or sk-or-... (or leave blank)" />
     <div style="display:flex; justify-content:flex-end; gap:8px;">
       <button onclick="document.getElementById('settings-modal').close()">Cancel</button>
       <button class="active" onclick="saveApiKey()">Save Key</button>
     </div>
   </dialog>
 
-  <script src="./app.js?v=15"></script>
+  <dialog id="dossier-modal" style="max-width:680px;">
+    <h2 id="dossier-title">CHRONOVISOR // UCMS SWEEP DOSSIER</h2>
+    <div class="dossier-body" id="dossier-content">No sweep executed yet. Type a target in the console and click "Chronovisor Sweep (4-Pass)".</div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button onclick="copyDossier()">Copy Markdown</button>
+      <button class="active" onclick="document.getElementById('dossier-modal').close()">Close</button>
+    </div>
+  </dialog>
+
+  <script src="./app.js?v=20"></script>
   <script src="./avatar3d.js?v=10"></script>
 </body>
 </html>
