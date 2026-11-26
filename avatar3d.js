@@ -37,8 +37,8 @@ function project(x, y, z, cx, cy, scale) {
 }
 
 function drawLine3D(p1, p2, cx, cy, scale, alpha = 0.85, width = 1.4) {
-  const a = project(p1[0], p1[1], p1[2], cx, cy, scale);
-  const b = project(p2[0], p2[1], p2[2], cx, cy, scale);
+  const a = project(p1.at(0), p1.at(1), p1.at(2), cx, cy, scale);
+  const b = project(p2.at(0), p2.at(1), p2.at(2), cx, cy, scale);
   ctx.globalAlpha = alpha;
   ctx.lineWidth = width;
   ctx.beginPath();
@@ -48,7 +48,7 @@ function drawLine3D(p1, p2, cx, cy, scale, alpha = 0.85, width = 1.4) {
 }
 
 function drawNode3D(pt, cx, cy, scale, radius = 0.025, alpha = 0.95) {
-  const p = project(pt[0], pt[1], pt[2], cx, cy, scale);
+  const p = project(pt.at(0), pt.at(1), pt.at(2), cx, cy, scale);
   ctx.globalAlpha = alpha;
   ctx.beginPath();
   ctx.arc(p.x, p.y, Math.max(1.4, p.s * radius), 0, Math.PI * 2);
@@ -78,7 +78,7 @@ function drawPolyRing3D(radius, yOffset, sides, rotOffset, cx, cy, scale, alpha 
     const a = (i / sides) * Math.PI * 2 + rotOffset;
     pts.push([Math.cos(a) * radius, yOffset, Math.sin(a) * radius]);
   }
-  for (let i = 0; i < sides; i++) drawLine3D(pts[i], pts[(i + 1) % sides], cx, cy, scale, alpha, width);
+  for (let i = 0; i < sides; i++) drawLine3D(pts.at(i), pts.at((i + 1) % sides), cx, cy, scale, alpha, width);
   return pts;
 }
 
@@ -134,13 +134,15 @@ function drawHUDFrame(w, h, color, t, st) {
   ctx.fillText('RIG // ' + st.persona.toUpperCase() + '.' + st.form.toUpperCase(), w - pad - 145, h - pad - 10);
   ctx.restore();
 }
+
 function rot3D(pt, yaw, ox, oy, oz) {
   const cos = Math.cos(yaw), sin = Math.sin(yaw);
-  return [ox + pt * cos - pt * sin, oy + pt, oz + pt * sin + pt * cos];
+  const px = pt.at(0), py = pt.at(1), pz = pt.at(2);
+  return [ox + px * cos - pz * sin, oy + py, oz + px * sin + pz * cos];
 }
 
 function drawPixelPoly3D(pts3D, fill, stroke, cx, cy, scale, pxStep = 3) {
-  const proj = pts3D.map(p => project(p, p, p, cx, cy, scale));
+  const proj = pts3D.map(p => project(p.at(0), p.at(1), p.at(2), cx, cy, scale));
   if (proj.some(p => p.z < -3.6)) return;
   ctx.beginPath();
   proj.forEach((p, i) => {
@@ -155,8 +157,8 @@ function drawPixelPoly3D(pts3D, fill, stroke, cx, cy, scale, pxStep = 3) {
 }
 
 function drawPixelLimb3D(pA, pB, colorTop, colorBot, cx, cy, scale, pxStep = 3) {
-  const a = project(pA, pA, pA, cx, cy, scale);
-  const b = project(pB, pB, pB, cx, cy, scale);
+  const a = project(pA.at(0), pA.at(1), pA.at(2), cx, cy, scale);
+  const b = project(pB.at(0), pB.at(1), pB.at(2), cx, cy, scale);
   const mx = (a.x + b.x) * 0.5, my = (a.y + b.y) * 0.5;
   ctx.lineCap = 'square';
   ctx.lineWidth = Math.max(3, pxStep * 1.6);
@@ -168,7 +170,6 @@ function drawPixelLimb3D(pA, pB, colorTop, colorBot, cx, cy, scale, pxStep = 3) 
   ctx.strokeStyle = colorBot;
   ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(b.x, b.y); ctx.stroke();
 }
-
 function draw3DChimericRunningFox(cx, cy, scale, t, accentColor) {
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
@@ -185,8 +186,6 @@ function draw3DChimericRunningFox(cx, cy, scale, t, accentColor) {
 
   const P = (x, y, z) => rot3D([x, y, z], yaw, fx, fy, fz);
 
-  // 1. 9 Asymmetric 3D Undulating Tails (4 Russet/White Left + 5 Ivory/Gold Mechanical Right)
-  const hipCenter = P(-0.55, 0.14, 0);
   for (let k = -4; k <= 4; k++) {
     const isMech = k > 0;
     const spreadZ = k * 0.19;
@@ -204,7 +203,6 @@ function draw3DChimericRunningFox(cx, cy, scale, t, accentColor) {
     drawPixelLimb3D(p2, tip, isMech ? '#fbbf24' : '#f8fafc', isMech ? '#f8fafc' : '#f8fafc', cx, cy, scale, pxStep * 0.85);
   }
 
-  // 2. 4 Articulated Galloping Legs (Russet upper + Black stockings)
   const strideF = Math.sin(t * 9) * 0.34;
   const strideB = Math.cos(t * 9) * 0.34;
   const legSpecs = [
@@ -218,45 +216,39 @@ function draw3DChimericRunningFox(cx, cy, scale, t, accentColor) {
     drawPixelLimb3D(l.knee, l.paw, '#1e1b24', '#090d16', cx, cy, scale, pxStep * 0.9);
   });
 
-  // 3. Biomechanical Ivory & Gold Armored Torso + White Chest Ruff
   const neckTop = P(0.45, 0.34, 0), backMid = P(-0.08, 0.26, 0), rump = P(-0.54, 0.22, 0);
   const chestLow = P(0.42, -0.16, 0), bellyLow = P(-0.12, -0.14, 0), hipLow = P(-0.52, -0.06, 0);
   const sideL = P(0.05, 0.08, -0.24), sideR = P(0.05, 0.08, 0.24);
 
-  // Left & Right Ivory Armor Panels with Gold Trim
   drawPixelPoly3D([neckTop, backMid, sideL, chestLow], '#f8fafc', '#fbbf24', cx, cy, scale, pxStep);
   drawPixelPoly3D([backMid, rump, hipLow, bellyLow, sideL], '#e2e8f0', '#fbbf24', cx, cy, scale, pxStep);
   drawPixelPoly3D([neckTop, backMid, sideR, chestLow], '#f8fafc', '#fbbf24', cx, cy, scale, pxStep);
   drawPixelPoly3D([backMid, rump, hipLow, bellyLow, sideR], '#cbd5e1', '#fbbf24', cx, cy, scale, pxStep);
-  // White Fur Chest Ruff
   drawPixelPoly3D([P(0.54, 0.24, 0), P(0.38, 0.16, -0.2), P(0.42, -0.2, 0), P(0.38, 0.16, 0.2)], '#ffffff', '#94a3b8', cx, cy, scale, pxStep);
 
-  // 4. Chimeric 3D Head (Left Russet Fox + Right Dark Obsidian Volcanic Crest)
   const nose = P(0.96, 0.26 + gallop * 0.03, 0);
   const jaw = P(0.74, 0.16 + gallop * 0.03, 0);
   const browC = P(0.68, 0.46, 0);
   const cheekL = P(0.56, 0.28, -0.22), cheekR = P(0.56, 0.28, 0.22);
   const earL = P(0.52, 0.76, -0.18), earR = P(0.52, 0.76, 0.18);
 
-  // Left Organic Fox Side (Russet + White Cheek + Amber Eye)
   drawPixelPoly3D([nose, browC, cheekL], '#ea580c', '#090d16', cx, cy, scale, pxStep);
   drawPixelPoly3D([nose, cheekL, jaw], '#f8fafc', '#090d16', cx, cy, scale, pxStep);
   drawPixelPoly3D([browC, earL, cheekL], '#ea580c', '#090d16', cx, cy, scale, pxStep);
 
-  // Right Obsidian Volcanic Side (Charcoal/Obsidian + Glowing Ember Eye)
   drawPixelPoly3D([nose, browC, cheekR], '#1e1b24', '#3f3b4d', cx, cy, scale, pxStep);
   drawPixelPoly3D([nose, cheekR, jaw], '#272330', '#090d16', cx, cy, scale, pxStep);
   drawPixelPoly3D([browC, earR, cheekR], '#18151d', '#3f3b4d', cx, cy, scale, pxStep);
 
-  // Eyes & Nose Tip
-  const eyeL = project(...P(0.75, 0.35, -0.11), cx, cy, scale);
-  const eyeR = project(...P(0.75, 0.35, 0.11), cx, cy, scale);
-  const noseTip = project(...nose, cx, cy, scale);
+  const eyeLPt = P(0.75, 0.35, -0.11);
+  const eyeRPt = P(0.75, 0.35, 0.11);
+  const eyeL = project(eyeLPt.at(0), eyeLPt.at(1), eyeLPt.at(2), cx, cy, scale);
+  const eyeR = project(eyeRPt.at(0), eyeRPt.at(1), eyeRPt.at(2), cx, cy, scale);
+  const noseTip = project(nose.at(0), nose.at(1), nose.at(2), cx, cy, scale);
   ctx.fillStyle = '#fbbf24'; ctx.fillRect(Math.round(eyeL.x), Math.round(eyeL.y), pxStep * 1.4, pxStep * 1.4);
   ctx.fillStyle = '#ef4444'; ctx.fillRect(Math.round(eyeR.x), Math.round(eyeR.y), pxStep * 1.5, pxStep * 1.5);
   ctx.fillStyle = '#090d16'; ctx.fillRect(Math.round(noseTip.x - pxStep), Math.round(noseTip.y - pxStep), pxStep * 1.8, pxStep * 1.8);
 
-  // 5. Golden & Persona Pixel Stardust Trail
   for (let p = 0; p < 16; p++) {
     const trailAngle = orbit - 0.25 - p * 0.08;
     const sp = project(Math.cos(trailAngle) * 1.15, fy + Math.sin(t * 4 + p) * 0.25, Math.sin(trailAngle) * 0.95, cx, cy, scale);
@@ -297,7 +289,7 @@ function render() {
   ctx.shadowBlur = 0;
   const cosT = Math.cos(t * 0.15), sinT = Math.sin(t * 0.15);
   for (let i = 0; i < particles.length; i++) {
-    const pt = particles[i];
+    const pt = particles.at(i);
     const proj = project(pt.x * cosT - pt.z * sinT, pt.y + Math.sin(t + pt.phase) * 0.08, pt.z * cosT + pt.x * sinT, cx, cy, scale);
     if (proj.z > -3.5) {
       ctx.globalAlpha = Math.max(0.1, 0.5 - proj.z * 0.1);
@@ -316,18 +308,18 @@ function render() {
     for (let i = 0; i < 5; i++) drawRing3D(0.65 + i * 0.22, 0, t * (0.7 + i * 0.18), i * 0.55, 44, cx, cy, scale, 0.85, 1.4);
     const eq = drawPolyRing3D(0.55, 0, 8, t, cx, cy, scale, 0.9, 1.4);
     eq.forEach(p => { drawLine3D([0, 0.55, 0], p, cx, cy, scale, 0.75, 1.2); drawLine3D([0, -0.55, 0], p, cx, cy, scale, 0.75, 1.2); drawNode3D(p, cx, cy, scale, 0.022); });
-    drawNode3D(, cx, cy, scale, 0.18 + Math.sin(t * 4) * 0.03, 0.95);
+    drawNode3D([0, 0, 0], cx, cy, scale, 0.18 + Math.sin(t * 4) * 0.03, 0.95);
 
   } else if (st.form === 'lantern') {
     const bob = Math.sin(t * 2) * 0.1, top = [0, 1.22 + bob, 0], bot = [0, -1.08 + bob, 0];
     const upper = drawPolyRing3D(0.58, 0.45 + bob, 8, t * 0.4, cx, cy, scale, 0.9, 1.5);
     const lower = drawPolyRing3D(0.48, -0.35 + bob, 8, -t * 0.4, cx, cy, scale, 0.9, 1.5);
     for (let k = 0; k < 8; k++) {
-      drawLine3D(top, upper[k], cx, cy, scale, 0.85, 1.4);
-      drawLine3D(upper[k], lower[k], cx, cy, scale, 0.85, 1.4);
-      drawLine3D(upper[k], lower[(k + 1) % 8], cx, cy, scale, 0.45, 1);
-      drawLine3D(lower[k], bot, cx, cy, scale, 0.85, 1.4);
-      drawNode3D(upper[k], cx, cy, scale, 0.02);
+      drawLine3D(top, upper.at(k), cx, cy, scale, 0.85, 1.4);
+      drawLine3D(upper.at(k), lower.at(k), cx, cy, scale, 0.85, 1.4);
+      drawLine3D(upper.at(k), lower.at((k + 1) % 8), cx, cy, scale, 0.45, 1);
+      drawLine3D(lower.at(k), bot, cx, cy, scale, 0.85, 1.4);
+      drawNode3D(upper.at(k), cx, cy, scale, 0.02);
     }
     drawRing3D(0.32, 0.05 + bob, t * 1.2, 0.4, 24, cx, cy, scale, 0.8, 1.2);
     drawNode3D([0, 0.05 + bob, 0], cx, cy, scale, 0.16 + Math.sin(t * 6) * 0.04, 1);
@@ -352,13 +344,13 @@ function render() {
     drawNode3D(shL, cx, cy, scale, 0.032); drawNode3D(shR, cx, cy, scale, 0.032);
     chestRing.forEach((p, idx) => {
       drawLine3D(neckBase, p, cx, cy, scale, 0.7, 1.2);
-      drawLine3D(p, waistRing[idx], cx, cy, scale, 0.8, 1.4);
-      drawLine3D(p, waistRing[(idx + 1) % 6], cx, cy, scale, 0.5, 1);
+      drawLine3D(p, waistRing.at(idx), cx, cy, scale, 0.8, 1.4);
+      drawLine3D(p, waistRing.at((idx + 1) % 6), cx, cy, scale, 0.5, 1);
     });
     for (let s = 0; s < 12; s++) {
-      const wPt = waistRing[Math.floor(s / 2)];
-      drawLine3D(wPt, hemRing[s], cx, cy, scale, 0.72, 1.4);
-      drawLine3D(hemRing[s], hemRing[(s + 1) % 12], cx, cy, scale, 0.82, 1.5);
+      const wPt = waistRing.at(Math.floor(s / 2));
+      drawLine3D(wPt, hemRing.at(s), cx, cy, scale, 0.72, 1.4);
+      drawLine3D(hemRing.at(s), hemRing.at((s + 1) % 12), cx, cy, scale, 0.82, 1.5);
     }
     drawNode3D(heart, cx, cy, scale, 0.13 + Math.sin(t * 4) * 0.025, 1);
 
