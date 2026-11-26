@@ -82,6 +82,12 @@ function drawPolyRing3D(radius, yOffset, sides, rotOffset, cx, cy, scale, alpha 
   return pts;
 }
 
+function rot3D(pt, yaw, ox, oy, oz) {
+  const cos = Math.cos(yaw), sin = Math.sin(yaw);
+  const px = pt.at(0), py = pt.at(1), pz = pt.at(2);
+  return [ox + px * cos - pz * sin, oy + py, oz + px * sin + pz * cos];
+}
+
 function drawHUDFrame(w, h, color, t, st) {
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
@@ -134,127 +140,126 @@ function drawHUDFrame(w, h, color, t, st) {
   ctx.fillText('RIG // ' + st.persona.toUpperCase() + '.' + st.form.toUpperCase(), w - pad - 145, h - pad - 10);
   ctx.restore();
 }
-
-function rot3D(pt, yaw, ox, oy, oz) {
-  const cos = Math.cos(yaw), sin = Math.sin(yaw);
-  const px = pt.at(0), py = pt.at(1), pz = pt.at(2);
-  return [ox + px * cos - pz * sin, oy + py, oz + px * sin + pz * cos];
-}
-
-function drawPixelPoly3D(pts3D, fill, stroke, cx, cy, scale, pxStep = 3) {
-  const proj = pts3D.map(p => project(p.at(0), p.at(1), p.at(2), cx, cy, scale));
-  if (proj.some(p => p.z < -3.6)) return;
-  ctx.beginPath();
-  proj.forEach((p, i) => {
-    const sx = Math.round(p.x / pxStep) * pxStep;
-    const sy = Math.round(p.y / pxStep) * pxStep;
-    if (i === 0) ctx.moveTo(sx, sy);
-    else ctx.lineTo(sx, sy);
-  });
-  ctx.closePath();
-  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1.5, pxStep * 0.55); ctx.stroke(); }
-}
-
-function drawPixelLimb3D(pA, pB, colorTop, colorBot, cx, cy, scale, pxStep = 3) {
-  const a = project(pA.at(0), pA.at(1), pA.at(2), cx, cy, scale);
-  const b = project(pB.at(0), pB.at(1), pB.at(2), cx, cy, scale);
-  const mx = (a.x + b.x) * 0.5, my = (a.y + b.y) * 0.5;
-  ctx.lineCap = 'square';
-  ctx.lineWidth = Math.max(3, pxStep * 1.6);
-  ctx.strokeStyle = '#090d16';
-  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-  ctx.lineWidth = Math.max(2, pxStep * 1.1);
-  ctx.strokeStyle = colorTop;
-  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(mx, my); ctx.stroke();
-  ctx.strokeStyle = colorBot;
-  ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(b.x, b.y); ctx.stroke();
-}
 function draw3DChimericRunningFox(cx, cy, scale, t, accentColor) {
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
   ctx.imageSmoothingEnabled = false;
   ctx.shadowBlur = 0;
 
-  const pxStep = Math.max(2, Math.round(3 / zoom));
-  const orbit = t * 1.15;
-  const fx = Math.cos(orbit) * 1.05;
-  const fz = Math.sin(orbit) * 0.85;
-  const gallop = Math.sin(t * 9);
-  const fy = Math.abs(gallop) * 0.14 - 0.12;
+  const px = Math.max(3, Math.round((scale * zoom) / 36));
+  const orbit = t * 1.1;
+  const fx = Math.cos(orbit) * 0.95;
+  const fz = Math.sin(orbit) * 0.80;
+  const gallop = Math.sin(t * 8.5);
+  const fy = Math.abs(gallop) * 0.14 - 0.10;
   const yaw = -orbit - Math.PI / 2;
 
   const P = (x, y, z) => rot3D([x, y, z], yaw, fx, fy, fz);
+  const voxels = [];
 
+  const addCluster = (pt3D, radius, fill, border = '#090d16') => {
+    const pr = project(pt3D.at(0), pt3D.at(1), pt3D.at(2), cx, cy, scale);
+    if (pr.z < -3.4) return;
+    const size = Math.max(px * 1.4, Math.round((pr.s * radius) / px) * px);
+    voxels.push({ x: Math.round(pr.x / px) * px, y: Math.round(pr.y / px) * px, z: pr.z, size, fill, border });
+  };
+
+  const addTube = (pA, pB, steps, rStart, rEnd, cMain, cTip, border = '#090d16') => {
+    for (let i = 0; i <= steps; i++) {
+      const f = i / steps;
+      const pt = [
+        pA.at(0) + (pB.at(0) - pA.at(0)) * f,
+        pA.at(1) + (pB.at(1) - pA.at(1)) * f,
+        pA.at(2) + (pB.at(2) - pA.at(2)) * f
+      ];
+      const r = rStart + (rEnd - rStart) * f;
+      addCluster(pt, r, f > 0.72 ? cTip : cMain, border);
+    }
+  };
+
+  // 1. 9 Lush, Tapered 3D Tails (4 Russet/White Fur + 5 Ivory/Gold Biomechanical)
   for (let k = -4; k <= 4; k++) {
     const isMech = k > 0;
-    const spreadZ = k * 0.19;
-    const liftY = 0.25 + Math.abs(k) * 0.08;
-    const wave = Math.sin(t * 7 + k * 0.7) * 0.12;
-    const wave2 = Math.cos(t * 7 + k * 0.7) * 0.16;
+    const spreadZ = k * 0.16;
+    const liftY = 0.22 + Math.abs(k) * 0.06;
+    const wave = Math.sin(t * 6.5 + k * 0.75) * 0.10;
+    const wave2 = Math.cos(t * 6.5 + k * 0.75) * 0.14;
 
-    const p0 = P(-0.52, 0.12, spreadZ * 0.25);
-    const p1 = P(-0.92, liftY + wave, spreadZ * 0.65);
-    const p2 = P(-1.32, liftY + 0.18 + wave2, spreadZ * 1.05);
-    const tip = P(-1.62, liftY + 0.08 - wave, spreadZ * 1.25);
+    const p0 = P(-0.46, 0.10, spreadZ * 0.2);
+    const p1 = P(-0.78, liftY + wave, spreadZ * 0.65);
+    const p2 = P(-1.12, liftY + 0.22 + wave2, spreadZ * 1.05);
+    const tip = P(-1.36, liftY + 0.34 - wave, spreadZ * 1.15);
 
-    drawPixelLimb3D(p0, p1, isMech ? '#f8fafc' : '#ea580c', isMech ? '#fbbf24' : '#9a3412', cx, cy, scale, pxStep);
-    drawPixelLimb3D(p1, p2, isMech ? '#f8fafc' : '#ea580c', isMech ? '#fbbf24' : '#ea580c', cx, cy, scale, pxStep);
-    drawPixelLimb3D(p2, tip, isMech ? '#fbbf24' : '#f8fafc', isMech ? '#f8fafc' : '#f8fafc', cx, cy, scale, pxStep * 0.85);
+    const cBase = isMech ? '#f8fafc' : '#ea580c';
+    const cMid  = isMech ? '#fbbf24' : '#c2410c';
+    const cTip  = isMech ? '#f8fafc' : '#ffffff';
+
+    addTube(p0, p1, 4, 0.09, 0.15, cBase, cBase);
+    addTube(p1, p2, 5, 0.15, 0.13, cMid, cBase);
+    addTube(p2, tip, 4, 0.12, 0.04, cBase, cTip);
   }
 
-  const strideF = Math.sin(t * 9) * 0.34;
-  const strideB = Math.cos(t * 9) * 0.34;
-  const legSpecs = [
-    { root: P(0.32, -0.05, -0.18), knee: P(0.36 + strideF * 0.7, -0.38 + Math.max(0, strideF) * 0.25, -0.19), paw: P(0.38 + strideF, -0.72 + Math.max(0, strideF) * 0.35, -0.18) },
-    { root: P(0.32, -0.05, 0.18),  knee: P(0.36 - strideF * 0.7, -0.38 + Math.max(0, -strideF) * 0.25, 0.19), paw: P(0.38 - strideF, -0.72 + Math.max(0, -strideF) * 0.35, 0.18) },
-    { root: P(-0.48, -0.02, -0.17), knee: P(-0.54 + strideB * 0.7, -0.38 + Math.max(0, strideB) * 0.25, -0.18), paw: P(-0.52 + strideB, -0.72 + Math.max(0, strideB) * 0.35, -0.17) },
-    { root: P(-0.48, -0.02, 0.17),  knee: P(-0.54 - strideB * 0.7, -0.38 + Math.max(0, -strideB) * 0.25, 0.18), paw: P(-0.52 - strideB, -0.72 + Math.max(0, -strideB) * 0.35, 0.17) }
+  // 2. Muscular Galloping Legs (Russet Thighs + Dark Charcoal Stockings & Paws)
+  const sF = Math.sin(t * 8.5) * 0.32;
+  const sB = Math.cos(t * 8.5) * 0.32;
+  const legs = [
+    { hip: P(0.30, -0.02, -0.17), knee: P(0.34 + sF * 0.7, -0.34 + Math.max(0, sF) * 0.2, -0.18), paw: P(0.36 + sF, -0.66 + Math.max(0, sF) * 0.3, -0.17) },
+    { hip: P(0.30, -0.02, 0.17),  knee: P(0.34 - sF * 0.7, -0.34 + Math.max(0, -sF) * 0.2, 0.18), paw: P(0.36 - sF, -0.66 + Math.max(0, -sF) * 0.3, 0.17) },
+    { hip: P(-0.42, 0.00, -0.16), knee: P(-0.48 + sB * 0.7, -0.34 + Math.max(0, sB) * 0.2, -0.17), paw: P(-0.46 + sB, -0.66 + Math.max(0, sB) * 0.3, -0.16) },
+    { hip: P(-0.42, 0.00, 0.16),  knee: P(-0.48 - sB * 0.7, -0.34 + Math.max(0, -sB) * 0.2, 0.17), paw: P(-0.46 - sB, -0.66 + Math.max(0, -sB) * 0.3, 0.16) }
   ];
-  legSpecs.forEach(l => {
-    drawPixelLimb3D(l.root, l.knee, '#ea580c', '#9a3412', cx, cy, scale, pxStep);
-    drawPixelLimb3D(l.knee, l.paw, '#1e1b24', '#090d16', cx, cy, scale, pxStep * 0.9);
+  legs.forEach(l => {
+    addTube(l.hip, l.knee, 4, 0.11, 0.07, '#ea580c', '#9a3412');
+    addTube(l.knee, l.paw, 4, 0.065, 0.055, '#1e1b24', '#090d16');
+    addCluster(l.paw, 0.075, '#1e1b24');
   });
 
-  const neckTop = P(0.45, 0.34, 0), backMid = P(-0.08, 0.26, 0), rump = P(-0.54, 0.22, 0);
-  const chestLow = P(0.42, -0.16, 0), bellyLow = P(-0.12, -0.14, 0), hipLow = P(-0.52, -0.06, 0);
-  const sideL = P(0.05, 0.08, -0.24), sideR = P(0.05, 0.08, 0.24);
+  // 3. Ivory & Gold Armored Torso + Plush White Chest Ruff
+  addTube(P(0.36, 0.14, 0), P(-0.44, 0.10, 0), 7, 0.23, 0.20, '#f8fafc', '#e2e8f0', '#fbbf24');
+  [-0.20, 0.20].forEach(zSide => {
+    addCluster(P(0.28, 0.08, zSide), 0.15, '#f8fafc', '#fbbf24');
+    addCluster(P(-0.36, 0.08, zSide), 0.14, '#f8fafc', '#fbbf24');
+  });
+  addCluster(P(0.46, 0.12, 0), 0.21, '#ffffff', '#cbd5e1');
+  addCluster(P(0.44, -0.02, -0.09), 0.15, '#f8fafc', '#cbd5e1');
+  addCluster(P(0.44, -0.02, 0.09), 0.15, '#f8fafc', '#cbd5e1');
 
-  drawPixelPoly3D([neckTop, backMid, sideL, chestLow], '#f8fafc', '#fbbf24', cx, cy, scale, pxStep);
-  drawPixelPoly3D([backMid, rump, hipLow, bellyLow, sideL], '#e2e8f0', '#fbbf24', cx, cy, scale, pxStep);
-  drawPixelPoly3D([neckTop, backMid, sideR, chestLow], '#f8fafc', '#fbbf24', cx, cy, scale, pxStep);
-  drawPixelPoly3D([backMid, rump, hipLow, bellyLow, sideR], '#cbd5e1', '#fbbf24', cx, cy, scale, pxStep);
-  drawPixelPoly3D([P(0.54, 0.24, 0), P(0.38, 0.16, -0.2), P(0.42, -0.2, 0), P(0.38, 0.16, 0.2)], '#ffffff', '#94a3b8', cx, cy, scale, pxStep);
+  // 4. Sculpted Chimeric 3D Head (Left Russet vs. Right Obsidian Volcanic Crest)
+  const headY = 0.32 + gallop * 0.03;
+  addCluster(P(0.56, headY, -0.08), 0.17, '#ea580c');
+  addCluster(P(0.56, headY, 0.08), 0.18, '#1e1b24', '#3f3b4d');
+  addCluster(P(0.52, headY + 0.08, 0.11), 0.14, '#272330', '#3f3b4d');
+  addCluster(P(0.62, headY - 0.07, -0.10), 0.13, '#ffffff');
+  addCluster(P(0.62, headY - 0.07, 0.09), 0.12, '#1e1b24');
+  addTube(P(0.66, headY - 0.04, 0), P(0.88, headY - 0.06, 0), 3, 0.11, 0.06, '#ea580c', '#ffffff');
+  addCluster(P(0.90, headY - 0.05, 0), 0.05, '#090d16');
 
-  const nose = P(0.96, 0.26 + gallop * 0.03, 0);
-  const jaw = P(0.74, 0.16 + gallop * 0.03, 0);
-  const browC = P(0.68, 0.46, 0);
-  const cheekL = P(0.56, 0.28, -0.22), cheekR = P(0.56, 0.28, 0.22);
-  const earL = P(0.52, 0.76, -0.18), earR = P(0.52, 0.76, 0.18);
+  addTube(P(0.50, headY + 0.12, -0.12), P(0.46, headY + 0.38, -0.15), 4, 0.09, 0.03, '#ea580c', '#090d16');
+  addTube(P(0.50, headY + 0.12, 0.12), P(0.44, headY + 0.34, 0.15), 3, 0.10, 0.05, '#1e1b24', '#3f3b4d');
 
-  drawPixelPoly3D([nose, browC, cheekL], '#ea580c', '#090d16', cx, cy, scale, pxStep);
-  drawPixelPoly3D([nose, cheekL, jaw], '#f8fafc', '#090d16', cx, cy, scale, pxStep);
-  drawPixelPoly3D([browC, earL, cheekL], '#ea580c', '#090d16', cx, cy, scale, pxStep);
+  addCluster(P(0.71, headY + 0.02, -0.11), 0.042, '#fbbf24', '#090d16');
+  addCluster(P(0.71, headY + 0.02, 0.11), 0.045, '#ef4444', '#090d16');
 
-  drawPixelPoly3D([nose, browC, cheekR], '#1e1b24', '#3f3b4d', cx, cy, scale, pxStep);
-  drawPixelPoly3D([nose, cheekR, jaw], '#272330', '#090d16', cx, cy, scale, pxStep);
-  drawPixelPoly3D([browC, earR, cheekR], '#18151d', '#3f3b4d', cx, cy, scale, pxStep);
+  // 5. Depth-Sort All Voxels Back-to-Front & Render Crisp Pixel Blocks
+  voxels.sort((a, b) => b.z - a.z);
+  for (let i = 0; i < voxels.length; i++) {
+    const v = voxels.at(i);
+    const half = v.size * 0.5;
+    if (v.border) {
+      ctx.fillStyle = v.border;
+      ctx.fillRect(v.x - half - px * 0.5, v.y - half - px * 0.5, v.size + px, v.size + px);
+    }
+    ctx.fillStyle = v.fill;
+    ctx.fillRect(v.x - half, v.y - half, v.size, v.size);
+  }
 
-  const eyeLPt = P(0.75, 0.35, -0.11);
-  const eyeRPt = P(0.75, 0.35, 0.11);
-  const eyeL = project(eyeLPt.at(0), eyeLPt.at(1), eyeLPt.at(2), cx, cy, scale);
-  const eyeR = project(eyeRPt.at(0), eyeRPt.at(1), eyeRPt.at(2), cx, cy, scale);
-  const noseTip = project(nose.at(0), nose.at(1), nose.at(2), cx, cy, scale);
-  ctx.fillStyle = '#fbbf24'; ctx.fillRect(Math.round(eyeL.x), Math.round(eyeL.y), pxStep * 1.4, pxStep * 1.4);
-  ctx.fillStyle = '#ef4444'; ctx.fillRect(Math.round(eyeR.x), Math.round(eyeR.y), pxStep * 1.5, pxStep * 1.5);
-  ctx.fillStyle = '#090d16'; ctx.fillRect(Math.round(noseTip.x - pxStep), Math.round(noseTip.y - pxStep), pxStep * 1.8, pxStep * 1.8);
-
+  // 6. Golden Stardust Trail
   for (let p = 0; p < 16; p++) {
     const trailAngle = orbit - 0.25 - p * 0.08;
-    const sp = project(Math.cos(trailAngle) * 1.15, fy + Math.sin(t * 4 + p) * 0.25, Math.sin(trailAngle) * 0.95, cx, cy, scale);
+    const sp = project(Math.cos(trailAngle) * 1.05, fy + Math.sin(t * 4 + p) * 0.22, Math.sin(trailAngle) * 0.85, cx, cy, scale);
     ctx.globalAlpha = Math.max(0.15, 0.85 - p * 0.05);
     ctx.fillStyle = p % 3 === 0 ? accentColor : '#fbbf24';
-    ctx.fillRect(Math.round(sp.x), Math.round(sp.y), pxStep * 1.2, pxStep * 1.2);
+    ctx.fillRect(Math.round(sp.x), Math.round(sp.y), px * 1.2, px * 1.2);
   }
   ctx.restore();
 }
