@@ -7,17 +7,17 @@ canvas.style.cursor = 'grab';
 container.appendChild(canvas);
 const ctx = canvas.getContext('2d');
 
-let rotY = 0, rotX = 0.15, zoom = 1.0, isDragging = false, lastMouse = { x: 0, y: 0 };
+let rotY = 0, rotX = 0.16, zoom = 1.0, isDragging = false, lastMouse = { x: 0, y: 0 };
 
 canvas.addEventListener('mousedown', (e) => { isDragging = true; canvas.style.cursor = 'grabbing'; lastMouse = { x: e.clientX, y: e.clientY }; });
 window.addEventListener('mouseup', () => { isDragging = false; canvas.style.cursor = 'grab'; });
 window.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
   rotY += (e.clientX - lastMouse.x) * 0.01;
-  rotX = Math.max(-0.8, Math.min(0.8, rotX + (e.clientY - lastMouse.y) * 0.01));
+  rotX = Math.max(-0.85, Math.min(0.85, rotX + (e.clientY - lastMouse.y) * 0.01));
   lastMouse = { x: e.clientX, y: e.clientY };
 });
-canvas.addEventListener('wheel', (e) => { e.preventDefault(); zoom = Math.max(0.55, Math.min(1.8, zoom - e.deltaY * 0.0008)); }, { passive: false });
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); zoom = Math.max(0.55, Math.min(1.85, zoom - e.deltaY * 0.0008)); }, { passive: false });
 
 function resize() {
   canvas.width = container.clientWidth || window.innerWidth * 0.45;
@@ -36,7 +36,7 @@ function project(x, y, z, cx, cy, scale) {
   return { x: cx + x1 * factor, y: cy - y2 * factor, z: z2, s: factor };
 }
 
-function drawLine3D(p1, p2, cx, cy, scale, alpha = 0.85, width = 1.6) {
+function drawLine3D(p1, p2, cx, cy, scale, alpha = 0.85, width = 1.4) {
   const a = project(p1[0], p1[1], p1[2], cx, cy, scale);
   const b = project(p2[0], p2[1], p2[2], cx, cy, scale);
   ctx.globalAlpha = alpha;
@@ -47,8 +47,17 @@ function drawLine3D(p1, p2, cx, cy, scale, alpha = 0.85, width = 1.6) {
   ctx.stroke();
 }
 
-function drawRing3D(radius, yOffset, tiltX, tiltZ, segments, cx, cy, scale, alpha = 0.8) {
+function drawNode3D(pt, cx, cy, scale, radius = 0.025, alpha = 0.95) {
+  const p = project(pt[0], pt[1], pt[2], cx, cy, scale);
   ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, Math.max(1.4, p.s * radius), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawRing3D(radius, yOffset, tiltX, tiltZ, segments, cx, cy, scale, alpha = 0.8, width = 1.4) {
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = width;
   ctx.beginPath();
   for (let i = 0; i <= segments; i++) {
     const theta = (i / segments) * Math.PI * 2;
@@ -63,8 +72,158 @@ function drawRing3D(radius, yOffset, tiltX, tiltZ, segments, cx, cy, scale, alph
   ctx.stroke();
 }
 
-const particles = Array.from({ length: 220 }, () => ({
-  x: (Math.random() - 0.5) * 4.5, y: (Math.random() - 0.5) * 4.5, z: (Math.random() - 0.5) * 4.5, phase: Math.random() * Math.PI * 2
+function drawPolyRing3D(radius, yOffset, sides, rotOffset, cx, cy, scale, alpha = 0.8, width = 1.4) {
+  const pts = [];
+  for (let i = 0; i < sides; i++) {
+    const a = (i / sides) * Math.PI * 2 + rotOffset;
+    pts.push([Math.cos(a) * radius, yOffset, Math.sin(a) * radius]);
+  }
+  for (let i = 0; i < sides; i++) drawLine3D(pts[i], pts[(i + 1) % sides], cx, cy, scale, alpha, width);
+  return pts;
+}
+
+// 8-Bit Chimeric Nine-Tailed Fox Sprite Matrices (Frame A: Prowl, Frame B: Bound)
+const FOX_PALETTE = {
+  O: '#ea580c', // Russet Fur
+  D: '#9a3412', // Deep Amber Fur
+  W: '#f8fafc', // Ivory Armor & Tail Tips
+  G: '#fbbf24', // Gold Filigree
+  B: '#1e1b24', // Obsidian Volcanic Split
+  E: '#ef4444', // Glowing Ember Eye
+  K: '#090d16'  // Dark Paw / Nose
+};
+
+const FOX_FRAME_A = [
+  '....WW................B..B..',
+  '...WOOOW.............BO.BB..',
+  '..WOOOOOW...........BOOBBBB.',
+  '..DOOOOD....WWWW....BOEBKBB.',
+  '.WOOOOOD...WGGGGW...BOOBBKK.',
+  'WOOOOOOD..WGGGGGGW..DOOOBB..',
+  'DOOOOOD..WGGWWWWGGW.DOOOB...',
+  '.WOOOD..WGGWWWWWWGGWDOOD....',
+  '..WWOD..WGGWWWWWWGGWDOOD....',
+  '.WOOOD..WGGWWWWWWGGWDOOD....',
+  'WOOOOOD..WGGWWWWGGW.DOOD....',
+  '.DOOOOD...WGGGGGGW..DOOD....',
+  '..WOOOD....WGGGGW...DOOD....',
+  '...WWOD.....DOOD....DOO.....',
+  '............DOOD....DOO.....',
+  '............DOO......DO.....',
+  '............KK.......KK.....'
+];
+
+const FOX_FRAME_B = [
+  '.....WW................B..B.',
+  '....WOOOW.............BO.BB.',
+  '...WOOOOOW...........BOOBBBB',
+  '...DOOOOD....WWWW....BOEBKBB',
+  '..WOOOOOD...WGGGGW...BOOBBKK',
+  '.WOOOOOOD..WGGGGGGW..DOOOBB.',
+  '.DOOOOOD..WGGWWWWGGW.DOOOB..',
+  '..WOOOD..WGGWWWWWWGGWDOOD...',
+  '...WWOD..WGGWWWWWWGGWDOOD...',
+  '..WOOOD..WGGWWWWWWGGWDOOD...',
+  '.WOOOOOD..WGGWWWWGGW.DOOD...',
+  '..DOOOOD...WGGGGGGW..DOOD...',
+  '...WOOOD....WGGGGW...DOOD...',
+  '....WWOD...DOO..DOO...DOO...',
+  '..........DOO....DOO...DOO..',
+  '.........KK........KK...KK..'
+];
+
+function draw8BitChimericFox(cx, cy, scale, t, accentColor) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.imageSmoothingEnabled = false;
+
+  const frame = Math.floor(t * 3.5) % 2 === 0 ? FOX_FRAME_A : FOX_FRAME_B;
+  const pxSize = Math.max(5, Math.round((scale * zoom) / 14));
+  const spriteW = frame[0].length * pxSize;
+  const spriteH = frame.length * pxSize;
+  const bobY = Math.round(Math.sin(t * 7) * (pxSize * 0.8));
+  const startX = Math.round(cx - spriteW * 0.5);
+  const startY = Math.round(cy - spriteH * 0.45 + bobY);
+
+  // 8-Bit Golden & Persona Stardust Pixels
+  for (let p = 0; p < 18; p++) {
+    const pPhase = t * 2.2 + p * 0.7;
+    const sx = Math.round(startX - pxSize * 2 + ((p * 29 + Math.floor(t * 25)) % (spriteW + pxSize * 5)));
+    const sy = Math.round(startY + Math.sin(pPhase) * (spriteH * 0.45) + spriteH * 0.4);
+    ctx.globalAlpha = 0.45 + Math.sin(pPhase * 2) * 0.4;
+    ctx.fillStyle = p % 3 === 0 ? accentColor : '#fbbf24';
+    ctx.fillRect(sx, sy, pxSize * 0.7, pxSize * 0.7);
+  }
+
+  // Render Pixel Matrix
+  ctx.globalAlpha = 1;
+  for (let r = 0; r < frame.length; r++) {
+    const row = frame[r];
+    for (let c = 0; c < row.length; c++) {
+      const ch = row[c];
+      if (ch === '.') continue;
+      ctx.fillStyle = FOX_PALETTE[ch] || accentColor;
+      ctx.fillRect(startX + c * pxSize, startY + r * pxSize, pxSize, pxSize);
+    }
+  }
+  ctx.restore();
+}
+
+function drawHUDFrame(w, h, color, t, st) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.shadowBlur = 0;
+
+  const pad = 16, len = 26;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1.5;
+  const corners = [
+    [pad, pad, 1, 1], [w - pad, pad, -1, 1],
+    [pad, h - pad, 1, -1], [w - pad, h - pad, -1, -1]
+  ];
+  corners.forEach(([x, y, dx, dy]) => {
+    ctx.beginPath();
+    ctx.moveTo(x + dx * len, y); ctx.lineTo(x, y); ctx.lineTo(x, y + dy * len);
+    ctx.moveTo(x + dx * (len - 8), y + dy * 5); ctx.lineTo(x + dx * 5, y + dy * 5); ctx.lineTo(x + dx * 5, y + dy * (len - 8));
+    ctx.stroke();
+  });
+
+  ctx.globalAlpha = 0.28;
+  ctx.lineWidth = 1;
+  for (let x = pad + 40; x < w - pad - 40; x += 14) {
+    const tickH = (x % 56 === 0) ? 7 : 3;
+    ctx.beginPath();
+    ctx.moveTo(x, pad); ctx.lineTo(x, pad + tickH);
+    ctx.moveTo(x, h - pad); ctx.lineTo(x, h - pad - tickH);
+    ctx.stroke();
+  }
+
+  const rOuter = Math.min(w, h) * 0.43;
+  ctx.globalAlpha = 0.16;
+  ctx.beginPath();
+  ctx.arc(w * 0.5, h * 0.5, rOuter, 0, Math.PI * 2);
+  ctx.stroke();
+
+  for (let d = 0; d < 36; d++) {
+    const a = (d / 36) * Math.PI * 2 + t * 0.08;
+    const r1 = rOuter - (d % 3 === 0 ? 8 : 4);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.5 + Math.cos(a) * r1, h * 0.5 + Math.sin(a) * r1);
+    ctx.lineTo(w * 0.5 + Math.cos(a) * rOuter, h * 0.5 + Math.sin(a) * rOuter);
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = 0.5;
+  ctx.font = '10px ui-monospace, monospace';
+  ctx.fillText('AZM ' + ((rotY * 57.3) % 360).toFixed(1) + '° // ELV ' + (rotX * 57.3).toFixed(1) + '°', pad + 12, h - pad - 10);
+  ctx.fillText('RIG // ' + st.persona.toUpperCase() + '.' + st.form.toUpperCase(), w - pad - 145, h - pad - 10);
+  ctx.restore();
+}
+
+const particles = Array.from({ length: 240 }, () => ({
+  x: (Math.random() - 0.5) * 4.8, y: (Math.random() - 0.5) * 4.8, z: (Math.random() - 0.5) * 4.8, phase: Math.random() * Math.PI * 2
 }));
 
 const PALETTES = {
@@ -75,7 +234,7 @@ const PALETTES = {
 let t = 0;
 function render() {
   t += 0.025;
-  if (!isDragging) rotY += 0.006;
+  if (!isDragging) rotY += 0.005;
   const w = canvas.width, h = canvas.height;
   if (!w || !h) { resize(); requestAnimationFrame(render); return; }
 
@@ -83,6 +242,8 @@ function render() {
   const color = PALETTES[st.persona] || '#38bdf8';
 
   ctx.clearRect(0, 0, w, h);
+  drawHUDFrame(w, h, color, t, st);
+
   ctx.strokeStyle = color; ctx.fillStyle = color;
   const cx = st.layout === 'roam' ? w * 0.5 + Math.cos(t * 0.45) * (w * 0.15) : w * 0.5;
   const cy = st.layout === 'roam' ? h * 0.5 + Math.sin(t * 0.65) * (h * 0.12) : h * 0.52;
@@ -94,81 +255,103 @@ function render() {
     const pt = particles[i];
     const proj = project(pt.x * cosT - pt.z * sinT, pt.y + Math.sin(t + pt.phase) * 0.08, pt.z * cosT + pt.x * sinT, cx, cy, scale);
     if (proj.z > -3.5) {
-      ctx.globalAlpha = Math.max(0.1, 0.55 - proj.z * 0.1);
+      ctx.globalAlpha = Math.max(0.1, 0.5 - proj.z * 0.1);
       const size = Math.max(1.2, proj.s * 0.015);
       ctx.fillRect(proj.x, proj.y, size, size);
     }
   }
 
   ctx.globalCompositeOperation = 'lighter';
-  ctx.shadowColor = color; ctx.shadowBlur = 14;
+  ctx.shadowColor = color; ctx.shadowBlur = 12;
+
+  drawRing3D(1.15, -1.18, 0, 0, 48, cx, cy, scale, 0.25, 1);
+  drawRing3D(0.85, -1.18, 0, 0, 36, cx, cy, scale, 0.35, 1);
 
   if (st.form === 'orb') {
-    for (let i = 0; i < 4; i++) drawRing3D(0.75 + i * 0.24, 0, t * (0.9 + i * 0.2), i * 0.65, 36, cx, cy, scale, 0.85);
-    const core = project(0, 0, 0, cx, cy, scale);
-    ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.arc(core.x, core.y, core.s * (0.28 + Math.sin(t * 4) * 0.04), 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 5; i++) drawRing3D(0.65 + i * 0.22, 0, t * (0.7 + i * 0.18), i * 0.55, 44, cx, cy, scale, 0.85, 1.4);
+    const eq = drawPolyRing3D(0.55, 0, 8, t, cx, cy, scale, 0.9, 1.4);
+    eq.forEach(p => { drawLine3D([0, 0.55, 0], p, cx, cy, scale, 0.75, 1.2); drawLine3D([0, -0.55, 0], p, cx, cy, scale, 0.75, 1.2); drawNode3D(p, cx, cy, scale, 0.022); });
+    drawNode3D([0, 0, 0], cx, cy, scale, 0.18 + Math.sin(t * 4) * 0.03, 0.95);
+
   } else if (st.form === 'lantern') {
-    const bob = Math.sin(t * 2) * 0.12, top = [0, 1.15 + bob, 0], bot = [0, -1.05 + bob, 0], r = 0.65, ringPts = [];
-    for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 + t * 0.5; ringPts.push([Math.cos(a) * r, 0.1 + bob, Math.sin(a) * r]); }
-    for (let k = 0; k < 6; k++) { drawLine3D(top, ringPts[k], cx, cy, scale, 0.9, 2); drawLine3D(bot, ringPts[k], cx, cy, scale, 0.9, 2); drawLine3D(ringPts[k], ringPts[(k + 1) % 6], cx, cy, scale, 0.9, 2); }
-    const flame = project(0, 0.1 + bob, 0, cx, cy, scale);
-    ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(flame.x, flame.y, flame.s * (0.22 + Math.sin(t * 6) * 0.05), 0, Math.PI * 2); ctx.fill();
-  } else if (st.form === 'fox') {
-    const stride = Math.sin(t * 6), fx = Math.cos(t * 1.1) * 0.9, fy = Math.sin(t * 6) * 0.14, fz = Math.sin(t * 1.1) * 0.6;
-    const nose = [fx + 0.95, fy + 0.18 + stride * 0.08, fz], earL = [fx + 0.55, fy + 0.55, fz - 0.16], earR = [fx + 0.55, fy + 0.55, fz + 0.16];
-    const neck = [fx + 0.42, fy + 0.15, fz], hip = [fx - 0.55, fy + 0.08 - stride * 0.06, fz], chest = [fx + 0.25, fy - 0.22, fz];
-    drawLine3D(nose, earL, cx, cy, scale, 0.95, 2.2); drawLine3D(nose, earR, cx, cy, scale, 0.95, 2.2);
-    drawLine3D(earL, neck, cx, cy, scale, 0.9, 2); drawLine3D(earR, neck, cx, cy, scale, 0.9, 2);
-    drawLine3D(nose, chest, cx, cy, scale, 0.9, 2); drawLine3D(neck, hip, cx, cy, scale, 0.95, 2.5); drawLine3D(chest, hip, cx, cy, scale, 0.85, 1.8);
-    for (let k = -3; k <= 3; k++) {
-      const mid = [fx - 1.05, fy + 0.28 + Math.abs(k) * 0.08 + Math.sin(t * 6 + k) * 0.14, fz + k * 0.22];
-      const tip = [fx - 1.65, fy + 0.18 + Math.abs(k) * 0.14 + Math.cos(t * 6 + k) * 0.2, fz + k * 0.36];
-      drawLine3D(hip, mid, cx, cy, scale, 0.8, 1.8); drawLine3D(mid, tip, cx, cy, scale, 0.65, 1.4);
+    const bob = Math.sin(t * 2) * 0.1, top = [0, 1.22 + bob, 0], bot = [0, -1.08 + bob, 0];
+    const upper = drawPolyRing3D(0.58, 0.45 + bob, 8, t * 0.4, cx, cy, scale, 0.9, 1.5);
+    const lower = drawPolyRing3D(0.48, -0.35 + bob, 8, -t * 0.4, cx, cy, scale, 0.9, 1.5);
+    for (let k = 0; k < 8; k++) {
+      drawLine3D(top, upper[k], cx, cy, scale, 0.85, 1.4);
+      drawLine3D(upper[k], lower[k], cx, cy, scale, 0.85, 1.4);
+      drawLine3D(upper[k], lower[(k + 1) % 8], cx, cy, scale, 0.45, 1);
+      drawLine3D(lower[k], bot, cx, cy, scale, 0.85, 1.4);
+      drawNode3D(upper[k], cx, cy, scale, 0.02);
     }
+    drawRing3D(0.32, 0.05 + bob, t * 1.2, 0.4, 24, cx, cy, scale, 0.8, 1.2);
+    drawNode3D([0, 0.05 + bob, 0], cx, cy, scale, 0.16 + Math.sin(t * 6) * 0.04, 1);
+
+  } else if (st.form === 'fox') {
+    draw8BitChimericFox(cx, cy, scale, t, color);
+
   } else {
-    const bob = Math.sin(t * 1.8) * 0.08;
-    const headPos = project(0, 1.05 + bob, 0, cx, cy, scale);
-    ctx.globalAlpha = 0.92; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(headPos.x, headPos.y, headPos.s * 0.26, 0, Math.PI * 2); ctx.stroke();
-    const shoulders = [0, 0.72 + bob, 0], basePts = [];
-    for (let s = 0; s < 8; s++) { const a = (s / 8) * Math.PI * 2; basePts.push([Math.cos(a) * 0.65, -0.95 + bob, Math.sin(a) * 0.65]); }
-    for (let s = 0; s < 8; s++) { drawLine3D(shoulders, basePts[s], cx, cy, scale, 0.78, 1.8); drawLine3D(basePts[s], basePts[(s + 1) % 8], cx, cy, scale, 0.78, 1.8); }
-    const heart = project(0, 0.22 + bob, 0, cx, cy, scale);
-    ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(heart.x, heart.y, heart.s * (0.14 + Math.sin(t * 4) * 0.03), 0, Math.PI * 2); ctx.fill();
+    const bob = Math.sin(t * 1.8) * 0.07;
+    const crown = [0, 1.34 + bob, 0], chin = [0, 0.84 + bob, 0];
+    const headRing = drawPolyRing3D(0.24, 1.09 + bob, 8, t * 0.3, cx, cy, scale, 0.9, 1.5);
+    headRing.forEach(p => { drawLine3D(crown, p, cx, cy, scale, 0.8, 1.3); drawLine3D(chin, p, cx, cy, scale, 0.8, 1.3); });
+
+    const neckBase = [0, 0.76 + bob, 0], heart = [0, 0.34 + bob, 0];
+    const shL = [-0.46, 0.64 + bob, 0], shR = [0.46, 0.64 + bob, 0];
+    const chestRing = drawPolyRing3D(0.36, 0.42 + bob, 6, 0, cx, cy, scale, 0.85, 1.4);
+    const waistRing = drawPolyRing3D(0.26, -0.05 + bob, 6, Math.PI / 6, cx, cy, scale, 0.85, 1.4);
+    const hemRing = drawPolyRing3D(0.72, -1.02 + bob, 12, 0, cx, cy, scale, 0.8, 1.5);
+
+    drawLine3D(chin, neckBase, cx, cy, scale, 0.9, 1.8);
+    drawLine3D(neckBase, shL, cx, cy, scale, 0.95, 2); drawLine3D(neckBase, shR, cx, cy, scale, 0.95, 2);
+    drawNode3D(shL, cx, cy, scale, 0.032); drawNode3D(shR, cx, cy, scale, 0.032);
+    chestRing.forEach((p, idx) => {
+      drawLine3D(neckBase, p, cx, cy, scale, 0.7, 1.2);
+      drawLine3D(p, waistRing[idx], cx, cy, scale, 0.8, 1.4);
+      drawLine3D(p, waistRing[(idx + 1) % 6], cx, cy, scale, 0.5, 1);
+    });
+    for (let s = 0; s < 12; s++) {
+      const wPt = waistRing[Math.floor(s / 2)];
+      drawLine3D(wPt, hemRing[s], cx, cy, scale, 0.72, 1.4);
+      drawLine3D(hemRing[s], hemRing[(s + 1) % 12], cx, cy, scale, 0.82, 1.5);
+    }
+    drawNode3D(heart, cx, cy, scale, 0.13 + Math.sin(t * 4) * 0.025, 1);
 
     if (st.persona === 'oracle') {
-      for (let r = 0; r < 12; r++) { const a = (r / 12) * Math.PI * 2 + t * 0.35; drawLine3D([Math.cos(a) * 0.36, 1.05 + bob + Math.sin(a) * 0.36, -0.1], [Math.cos(a) * 0.72, 1.05 + bob + Math.sin(a) * 0.72, -0.1], cx, cy, scale, 0.9, 2); }
+      for (let r = 0; r < 16; r++) { const a = (r / 16) * Math.PI * 2 + t * 0.35; const len = r % 2 === 0 ? 0.78 : 0.58; drawLine3D([Math.cos(a) * 0.34, 1.09 + bob + Math.sin(a) * 0.34, -0.1], [Math.cos(a) * len, 1.09 + bob + Math.sin(a) * len, -0.1], cx, cy, scale, 0.9, 1.7); }
     } else if (st.persona === 'detective') {
-      drawRing3D(0.55, 1.24 + bob, 0.12, -0.12, 28, cx, cy, scale, 0.95);
-      drawRing3D(0.22, 0.35 + bob, 0.3, 0.2, 20, cx + scale * 0.55, cy, scale, 0.9);
+      drawRing3D(0.56, 1.26 + bob, 0.12, -0.12, 32, cx, cy, scale, 0.95, 1.6);
+      drawRing3D(0.24, 0.38 + bob, 0.3, 0.2, 24, cx + scale * 0.55, cy, scale, 0.9, 1.6);
     } else if (st.persona === 'engineer') {
-      drawRing3D(0.68, 1.05 + bob, 0.35, Math.sin(t) * 0.3, 30, cx, cy, scale, 0.9);
-      drawRing3D(0.88, 1.05 + bob, -0.35, Math.cos(t) * 0.3, 30, cx, cy, scale, 0.75);
+      drawRing3D(0.72, 1.09 + bob, 0.35, Math.sin(t) * 0.3, 36, cx, cy, scale, 0.9, 1.5);
+      drawRing3D(0.92, 1.09 + bob, -0.35, Math.cos(t) * 0.3, 36, cx, cy, scale, 0.75, 1.4);
     } else if (st.persona === 'apothecary') {
-      for (let i = 0; i < 10; i++) {
-        const y = -0.7 + i * 0.18 + bob, a = t * 1.4 + i * 0.65;
-        drawLine3D([Math.cos(a) * 0.85, y, Math.sin(a) * 0.85], [Math.cos(a + Math.PI) * 0.85, y, Math.sin(a + Math.PI) * 0.85], cx, cy, scale, 0.85, 1.6);
+      for (let i = 0; i < 12; i++) {
+        const y = -0.75 + i * 0.17 + bob, a = t * 1.4 + i * 0.6;
+        const pA = [Math.cos(a) * 0.88, y, Math.sin(a) * 0.88], pB = [Math.cos(a + Math.PI) * 0.88, y, Math.sin(a + Math.PI) * 0.88];
+        drawLine3D(pA, pB, cx, cy, scale, 0.85, 1.5); drawNode3D(pA, cx, cy, scale, 0.02); drawNode3D(pB, cx, cy, scale, 0.02);
       }
     } else if (st.persona === 'advocate') {
       const tilt = Math.sin(t * 1.5) * 0.12;
-      drawLine3D([-0.95, 0.75 + bob + tilt, 0], [0.95, 0.75 + bob - tilt, 0], cx, cy, scale, 0.95, 2.2);
-      drawRing3D(0.26, 0.42 + bob + tilt, 0, 0, 20, cx - scale * 0.42, cy, scale, 0.85);
-      drawRing3D(0.26, 0.42 + bob - tilt, 0, 0, 20, cx + scale * 0.42, cy, scale, 0.85);
+      drawLine3D([-0.98, 0.78 + bob + tilt, 0], [0.98, 0.78 + bob - tilt, 0], cx, cy, scale, 0.95, 2);
+      drawRing3D(0.28, 0.44 + bob + tilt, 0, 0, 24, cx - scale * 0.43, cy, scale, 0.85, 1.5);
+      drawRing3D(0.28, 0.44 + bob - tilt, 0, 0, 24, cx + scale * 0.43, cy, scale, 0.85, 1.5);
     } else if (st.persona === 'architect') {
-      drawRing3D(0.95, 0.2 + bob, t * 0.5, t * 0.3, 5, cx, cy, scale, 0.9);
-      drawRing3D(0.62, 0.2 + bob, -t * 0.5, -t * 0.3, 5, cx, cy, scale, 0.8);
+      drawPolyRing3D(0.95, 0.22 + bob, 5, t * 0.5, cx, cy, scale, 0.9, 1.6);
+      drawPolyRing3D(0.62, 0.22 + bob, 5, -t * 0.5, cx, cy, scale, 0.8, 1.4);
     } else if (st.persona === 'strategist') {
-      for (let g = -2; g <= 2; g++) {
-        drawLine3D([g * 0.4, -0.95 + bob, -0.8], [g * 0.4, -0.95 + bob, 0.8], cx, cy, scale, 0.6, 1.3);
-        drawLine3D([-0.8, -0.95 + bob, g * 0.4], [0.8, -0.95 + bob, g * 0.4], cx, cy, scale, 0.6, 1.3);
+      for (let g = -3; g <= 3; g++) {
+        drawLine3D([g * 0.35, -1.02 + bob, -1.05], [g * 0.35, -1.02 + bob, 1.05], cx, cy, scale, 0.6, 1.2);
+        drawLine3D([-1.05, -1.02 + bob, g * 0.35], [1.05, -1.02 + bob, g * 0.35], cx, cy, scale, 0.6, 1.2);
       }
     } else if (st.persona === 'pedagogue') {
-      drawRing3D(0.75, 0.3 + bob, 0.2, 0, 32, cx, cy, scale, 0.85);
-      drawRing3D(1.05, 0.3 + bob, -0.2, 0, 32, cx, cy, scale, 0.65);
+      drawRing3D(0.78, 0.32 + bob, 0.22, 0, 36, cx, cy, scale, 0.85, 1.5);
+      drawRing3D(1.08, 0.32 + bob, -0.22, 0, 36, cx, cy, scale, 0.65, 1.3);
     } else if (st.persona === 'scholar') {
-      drawRing3D(0.95, 0.45 + bob, t * 0.4, 0.35, 36, cx, cy, scale, 0.9);
-      drawRing3D(1.15, 0.45 + bob, -t * 0.3, -0.35, 36, cx, cy, scale, 0.75);
-      drawLine3D([-0.55, 0.25 + bob, 0.45], [-0.1, 0.2 + bob, 0.55], cx, cy, scale, 0.9, 1.8);
-      drawLine3D([0.1, 0.2 + bob, 0.55], [0.55, 0.25 + bob, 0.45], cx, cy, scale, 0.9, 1.8);
+      drawRing3D(0.98, 0.48 + bob, t * 0.4, 0.35, 40, cx, cy, scale, 0.9, 1.5);
+      drawRing3D(1.18, 0.48 + bob, -t * 0.3, -0.35, 40, cx, cy, scale, 0.75, 1.3);
+      drawLine3D([-0.58, 0.26 + bob, 0.48], [-0.08, 0.2 + bob, 0.58], cx, cy, scale, 0.9, 1.8);
+      drawLine3D([0.08, 0.2 + bob, 0.58], [0.58, 0.26 + bob, 0.48], cx, cy, scale, 0.9, 1.8);
     }
   }
   ctx.globalCompositeOperation = 'source-over';
