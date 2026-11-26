@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lumen — 8-Archetype Observatory</title>
+  <title>Lumen — 9-Archetype Observatory &amp; Long-Form Book Engine</title>
   <style>
     :root {
       --bg-primary: #060913;
@@ -29,6 +29,7 @@
     body.persona-architect  { --accent: #f43f5e; }
     body.persona-strategist { --accent: #2dd4bf; }
     body.persona-pedagogue  { --accent: #60a5fa; }
+    body.persona-scholar    { --accent: #fbbf24; }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -53,7 +54,7 @@
     button:hover, button.active { background: var(--accent); color: #060913; font-weight: 600; }
     main {
       position: relative; flex: 1; display: grid;
-      grid-template-columns: 300px 1fr 410px; gap: 14px; padding: 14px; overflow: hidden;
+      grid-template-columns: 300px 1fr 420px; gap: 14px; padding: 14px; overflow: hidden;
     }
     body.layout-roam main { display: block; }
     #avatar-stage {
@@ -67,7 +68,7 @@
       padding: 14px; display: flex; flex-direction: column; gap: 12px; z-index: 10; overflow-y: auto;
     }
     body.layout-roam .panel-left { position: absolute; top: 14px; left: 14px; width: 290px; max-height: calc(100vh - 84px); }
-    body.layout-roam .panel-right { position: absolute; top: 14px; right: 14px; width: 410px; height: calc(100vh - 84px); }
+    body.layout-roam .panel-right { position: absolute; top: 14px; right: 14px; width: 420px; height: calc(100vh - 84px); }
     h2 {
       font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em;
       color: var(--accent); font-family: var(--font-mono);
@@ -80,8 +81,14 @@
     .ledger-box {
       font-family: var(--font-mono); font-size: 0.72rem; background: rgba(0,0,0,0.3);
       padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);
-      max-height: 220px; overflow-y: auto; line-height: 1.45;
+      max-height: 190px; overflow-y: auto; line-height: 1.45;
     }
+    .scholar-bar {
+      display: none; flex-wrap: wrap; gap: 6px; padding: 8px;
+      background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.4);
+      border-radius: 8px; font-family: var(--font-mono); font-size: 0.74rem;
+    }
+    body.persona-scholar .scholar-bar { display: flex; }
     #chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
     .msg { padding: 10px 12px; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; }
     .msg.user { background: rgba(255,255,255,0.07); align-self: flex-end; max-width: 88%; }
@@ -97,7 +104,7 @@
     }
     dialog {
       margin: auto; background: #0d1324; color: #e2e8f0; border: 1px solid var(--accent);
-      border-radius: 12px; padding: 20px; width: 92%; max-width: 560px;
+      border-radius: 12px; padding: 20px; width: 92%; max-width: 640px;
     }
     dialog::backdrop { background: rgba(0,0,0,0.75); }
     dialog input {
@@ -114,7 +121,7 @@
 <body class="layout-docked theme-holo persona-base">
   <header>
     <div class="brand">
-      <div>LUMEN // OCTAGON OBSERVATORY</div>
+      <div>LUMEN // OBSERVATORY</div>
       <span id="status-badge">PERSONA: BASE | FORM: CHARACTER | C=0.789</span>
     </div>
     <div class="controls-group">
@@ -128,6 +135,7 @@
         <option value="architect">6. Architect-Artisan (Design, Art &amp; Narrative)</option>
         <option value="strategist">7. Strategist-Economist (Systems &amp; Game Theory)</option>
         <option value="pedagogue">8. Pedagogue-Mentor (Cognition &amp; Learning)</option>
+        <option value="scholar">9. Scholar-Author (900-Page Monograph Engine)</option>
       </select>
     </div>
     <div class="controls-group">
@@ -154,7 +162,7 @@
       <div class="vital-row"><div class="vital-head"><span>λ · Phase Cost</span><span id="val-l">0.12</span></div><div class="bar-track"><div class="bar-fill" id="bar-l" style="width:12%"></div></div></div>
       <h2>Active Canon &amp; Ledger</h2>
       <div class="ledger-box" id="ledger-display">
-        [INIT] 50 Layer-0 Canon specs &amp; 8-Archetype Octagon indexed.<br/>
+        [INIT] 50 Layer-0 Canon specs &amp; Scholar Book Engine indexed.<br/>
         [ANCHOR] Hold the pattern. Do not pretend to be the source.
       </div>
     </section>
@@ -167,17 +175,30 @@
         <button id="btn-pipeline" class="active" onclick="runArchetypePipeline()">Run Steward Synthesis (3-Pass)</button>
         <button onclick="sweepSubreddit()">Sweep r/SubspacePhysics</button>
         <button onclick="document.getElementById('file-input').click()">Parse File</button>
-        <button onclick="openLatestDossier()">View Dossier</button>
+        <button onclick="openLatestDossier()">View Dossier / Book</button>
         <input type="file" id="file-input" accept=".txt,.md,.json,.csv" style="display:none" onchange="handleFileUpload(event)" />
       </div>
+
+      <div class="scholar-bar" id="scholar-controls">
+        <div style="width:100%; display:flex; justify-content:space-between; color:var(--accent);">
+          <span>MANUSCRIPT ENGINE</span>
+          <span id="book-stats">0 words (~0 pages)</span>
+        </div>
+        <button onclick="generateBookBlueprint()">1. Master Blueprint</button>
+        <button onclick="draftNextSection()">2. Draft Next Section</button>
+        <button onclick="draftChapterBatch()">3. Draft 3-Section Batch</button>
+        <button onclick="downloadBookMarkdown()">Download Book (.md)</button>
+        <button onclick="resetManuscript()">Reset Book</button>
+      </div>
+
       <div id="chat-log">
         <div class="msg lumen">
-          <div class="msg-meta">LUMEN // 8-ARCHETYPE STEWARD INTERFACE</div>
-          Hold the pattern. Select any of the 8 career archetypes in the top menu, enter a target below, and click the active Multi-Pass Pipeline button—or converse directly.
+          <div class="msg-meta">LUMEN // 9-ARCHETYPE STEWARD INTERFACE</div>
+          Hold the pattern. Select any archetype (including #9 Scholar-Author for 900+ page recursive book writing), enter your thesis or target below, and launch.
         </div>
       </div>
       <div class="input-row">
-        <textarea id="prompt-input" placeholder="Enter a target for your active archetype's multi-pass pipeline, or ask Lumen..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+        <textarea id="prompt-input" placeholder="Enter a book title/thesis for Scholar mode, or a target for your active archetype..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
         <button onclick="sendMessage()">Send</button>
       </div>
     </section>
@@ -186,7 +207,7 @@
   <dialog id="settings-modal">
     <h2 style="margin-bottom:10px;">Lumen Engine Connection</h2>
     <p style="font-size:0.8rem; color:#94a3b8; line-height:1.4;">
-      Optional: Paste a free email-only API key from Groq (<code>gsk_...</code>) or OpenRouter (<code>sk-or-...</code>) for high-speed 70B pipelines, or leave blank to use the built-in keyless Open-Core engine.
+      Optional: Paste a free email-only API key from Groq (<code>gsk_...</code>) or OpenRouter (<code>sk-or-...</code>) for high-speed 70B book drafting, or leave blank to use the built-in keyless Open-Core engine.
     </p>
     <label style="font-size:0.75rem; display:block; margin-top:12px;">API_KEY (Optional)</label>
     <input type="password" id="api-key-input" placeholder="gsk_... or sk-or-... (or leave blank)" />
@@ -196,16 +217,17 @@
     </div>
   </dialog>
 
-  <dialog id="dossier-modal" style="max-width:680px;">
-    <h2 id="dossier-title">LUMEN // ARCHETYPE RECONSTRUCTION DOSSIER</h2>
-    <div class="dossier-body" id="dossier-content">No multi-pass pipeline executed yet.</div>
+  <dialog id="dossier-modal" style="max-width:720px;">
+    <h2 id="dossier-title">LUMEN // DOSSIER &amp; MANUSCRIPT READER</h2>
+    <div class="dossier-body" id="dossier-content">No dossier or manuscript generated yet.</div>
     <div style="display:flex; justify-content:flex-end; gap:8px;">
-      <button onclick="copyDossier()">Copy Markdown</button>
+      <button onclick="copyDossier()">Copy Text</button>
+      <button onclick="downloadBookMarkdown()">Download .md</button>
       <button class="active" onclick="document.getElementById('dossier-modal').close()">Close</button>
     </div>
   </dialog>
 
-  <script src="./app.js?v=31"></script>
-  <script src="./avatar3d.js?v=31"></script>
+  <script src="./app.js?v=40"></script>
+  <script src="./avatar3d.js?v=40"></script>
 </body>
 </html>
