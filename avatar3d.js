@@ -134,128 +134,135 @@ function drawHUDFrame(w, h, color, t, st) {
   ctx.fillText('RIG // ' + st.persona.toUpperCase() + '.' + st.form.toUpperCase(), w - pad - 145, h - pad - 10);
   ctx.restore();
 }
-const FOX_PALETTE = {
-  O: '#ea580c', // Vibrant Russet Fur
-  L: '#fb923c', // Light Fur Highlight
-  D: '#9a3412', // Deep Amber Fur Shadow
-  W: '#f8fafc', // Ivory Armor & White Fur Ruff
-  S: '#cbd5e1', // Armor Shading
-  G: '#fbbf24', // Gold Filigree Trim
-  B: '#1e1b24', // Obsidian Volcanic Split
-  V: '#3f3b4d', // Obsidian Edge Highlight
-  E: '#ef4444', // Glowing Ember Eye
-  K: '#090d16'  // Jet Black Nose / Stockings / Ear Tips
-};
+function rot3D(pt, yaw, ox, oy, oz) {
+  const cos = Math.cos(yaw), sin = Math.sin(yaw);
+  return [ox + pt * cos - pt * sin, oy + pt, oz + pt * sin + pt * cos];
+}
 
-const FOX_BODY_A = [
-  '....................................KK....VV....',
-  '...................................KOOK..VBBV...',
-  '...................................KLLK.VBBBBV..',
-  '..................................KOOLLVBBBBBBV.',
-  '.................................KOOOWWBBBBBBBB.',
-  '.................................OOOWWWBBBEBBBBK',
-  '................................LOOOWWWBBBBBBBKK',
-  '..............GGGGGG............LOOOWWWVBBBBBB..',
-  '............GGWWWWWWGG.........LLOOOWWWWVBBBB...',
-  '..........GGWSSSSSSSSWGG......LLLOOOWWWWWVVV....',
-  '.........GWSSGGGGGGGGSSWG....LLLOOOOWWWWWWW.....',
-  '........GWSSGWWWWWWWWGSSWG..LLLOOOOWWWWWWWW.....',
-  '.......GWSSGWSSSSSSSSWGSSWGLLLOOOOWWWWWWWW......',
-  '.......GWSSGWSSSSSSSSWGSSWGLLOOOOWWWWWWWW.......',
-  '.......GWSSGWWWWWWWWWWGSSWGGOOOOWWWWWWWW........',
-  '........GWSSGGGGGGGGGGSSWGGGOOOWWWWWWWW.........',
-  '.........GGWSSSSSSSSSSWGG.GOOOWWWWWWWW..........',
-  '..........GGGGGGGGGGGGGG..GOOOWWW.DOOO..........',
-  '...........DOOO....DOOO...DOOO....DOOO..........',
-  '...........DOO......DOO...DOO......DOO..........',
-  '...........KK.......KK....DOO......DOO..........',
-  '..........................KK.......KK...........'
-];
+function drawPixelPoly3D(pts3D, fill, stroke, cx, cy, scale, pxStep = 3) {
+  const proj = pts3D.map(p => project(p, p, p, cx, cy, scale));
+  if (proj.some(p => p.z < -3.6)) return;
+  ctx.beginPath();
+  proj.forEach((p, i) => {
+    const sx = Math.round(p.x / pxStep) * pxStep;
+    const sy = Math.round(p.y / pxStep) * pxStep;
+    if (i === 0) ctx.moveTo(sx, sy);
+    else ctx.lineTo(sx, sy);
+  });
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1.5, pxStep * 0.55); ctx.stroke(); }
+}
 
-const FOX_BODY_B = [
-  '.....................................KK....VV...',
-  '....................................KOOK..VBBV..',
-  '....................................KLLK.VBBBBV.',
-  '...................................KOOLLVBBBBBBV',
-  '..................................KOOOWWBBBBBBBB',
-  '..................................OOOWWWBBBEBBBB',
-  '.................................LOOOWWWBBBBBBBK',
-  '...............GGGGGG............LOOOWWWVBBBBBB.',
-  '.............GGWWWWWWGG.........LLOOOWWWWVBBBB..',
-  '...........GGWSSSSSSSSWGG......LLLOOOWWWWWVVV...',
-  '..........GWSSGGGGGGGGSSWG....LLLOOOOWWWWWWW....',
-  '.........GWSSGWWWWWWWWGSSWG..LLLOOOOWWWWWWWW....',
-  '........GWSSGWSSSSSSSSWGSSWGLLLOOOOWWWWWWWW.....',
-  '........GWSSGWSSSSSSSSWGSSWGLLOOOOWWWWWWWW......',
-  '........GWSSGWWWWWWWWWWGSSWGGOOOOWWWWWWWW.......',
-  '.........GWSSGGGGGGGGGGSSWGGGOOOWWWWWWWW........',
-  '..........GGWSSSSSSSSSSWGG.GOOOWWWWWWWW.........',
-  '...........GGGGGGGGGGGGGG..GOOOWWW.DOOO.........',
-  '..........DOOO......DOOO...DOOO......DOOO.......',
-  '.........DOO..........DOO..DOO........DOO.......',
-  '........KK.............KK.KK...........KK.......'
-];
+function drawPixelLimb3D(pA, pB, colorTop, colorBot, cx, cy, scale, pxStep = 3) {
+  const a = project(pA, pA, pA, cx, cy, scale);
+  const b = project(pB, pB, pB, cx, cy, scale);
+  const mx = (a.x + b.x) * 0.5, my = (a.y + b.y) * 0.5;
+  ctx.lineCap = 'square';
+  ctx.lineWidth = Math.max(3, pxStep * 1.6);
+  ctx.strokeStyle = '#090d16';
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  ctx.lineWidth = Math.max(2, pxStep * 1.1);
+  ctx.strokeStyle = colorTop;
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(mx, my); ctx.stroke();
+  ctx.strokeStyle = colorBot;
+  ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(b.x, b.y); ctx.stroke();
+}
 
-function draw8BitChimericFox(cx, cy, scale, t, accentColor) {
+function draw3DChimericRunningFox(cx, cy, scale, t, accentColor) {
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
   ctx.imageSmoothingEnabled = false;
+  ctx.shadowBlur = 0;
 
-  const frame = Math.floor(t * 4) % 2 === 0 ? FOX_BODY_A : FOX_BODY_B;
-  const pxSize = Math.max(4, Math.round((scale * zoom) / 18));
-  const cols = frame[0].length;
-  const rows = frame.length;
-  const spriteW = cols * pxSize;
-  const spriteH = rows * pxSize;
-  const bobY = Math.round(Math.sin(t * 8) * (pxSize * 0.7));
-  const startX = Math.round(cx - spriteW * 0.42);
-  const startY = Math.round(cy - spriteH * 0.48 + bobY);
+  const pxStep = Math.max(2, Math.round(3 / zoom));
+  const orbit = t * 1.15;
+  const fx = Math.cos(orbit) * 1.05;
+  const fz = Math.sin(orbit) * 0.85;
+  const gallop = Math.sin(t * 9);
+  const fy = Math.abs(gallop) * 0.14 - 0.12;
+  const yaw = -orbit - Math.PI / 2;
 
-  // 9 Articulated Pixelated Tails (4 Russet/White + 5 Ivory/Gold Biomechanical)
-  const tailBaseX = startX + Math.round(cols * 0.18) * pxSize;
-  const tailBaseY = startY + Math.round(rows * 0.58) * pxSize;
-  for (let tailIdx = 0; tailIdx < 9; tailIdx++) {
-    const isMech = tailIdx >= 4;
-    const angleBase = -2.6 + (tailIdx / 8) * 1.65;
-    const sway = Math.sin(t * 4.5 + tailIdx * 0.75) * 0.16;
-    const angle = angleBase + sway;
-    const segments = 11;
+  const P = (x, y, z) => rot3D([x, y, z], yaw, fx, fy, fz);
 
-    for (let s = 1; s <= segments; s++) {
-      const dist = s * pxSize * 1.35;
-      const curve = Math.sin(s * 0.35 + t * 4 + tailIdx) * pxSize * 0.9;
-      const tx = Math.round((tailBaseX + Math.cos(angle) * dist - Math.sin(angle) * curve) / pxSize) * pxSize;
-      const ty = Math.round((tailBaseY + Math.sin(angle) * dist + Math.cos(angle) * curve) / pxSize) * pxSize;
-      const thickness = s < 3 ? 2 : s < 8 ? 3 : 2;
+  // 1. 9 Asymmetric 3D Undulating Tails (4 Russet/White Left + 5 Ivory/Gold Mechanical Right)
+  const hipCenter = P(-0.55, 0.14, 0);
+  for (let k = -4; k <= 4; k++) {
+    const isMech = k > 0;
+    const spreadZ = k * 0.19;
+    const liftY = 0.25 + Math.abs(k) * 0.08;
+    const wave = Math.sin(t * 7 + k * 0.7) * 0.12;
+    const wave2 = Math.cos(t * 7 + k * 0.7) * 0.16;
 
-      if (isMech) {
-        ctx.fillStyle = s === segments ? '#fbbf24' : (s % 2 === 0 ? '#f8fafc' : '#fbbf24');
-      } else {
-        ctx.fillStyle = s >= segments - 2 ? '#f8fafc' : (s % 2 === 0 ? '#ea580c' : '#9a3412');
-      }
-      ctx.fillRect(tx, ty, pxSize * thickness * 0.65, pxSize * thickness * 0.65);
-    }
+    const p0 = P(-0.52, 0.12, spreadZ * 0.25);
+    const p1 = P(-0.92, liftY + wave, spreadZ * 0.65);
+    const p2 = P(-1.32, liftY + 0.18 + wave2, spreadZ * 1.05);
+    const tip = P(-1.62, liftY + 0.08 - wave, spreadZ * 1.25);
+
+    drawPixelLimb3D(p0, p1, isMech ? '#f8fafc' : '#ea580c', isMech ? '#fbbf24' : '#9a3412', cx, cy, scale, pxStep);
+    drawPixelLimb3D(p1, p2, isMech ? '#f8fafc' : '#ea580c', isMech ? '#fbbf24' : '#ea580c', cx, cy, scale, pxStep);
+    drawPixelLimb3D(p2, tip, isMech ? '#fbbf24' : '#f8fafc', isMech ? '#f8fafc' : '#f8fafc', cx, cy, scale, pxStep * 0.85);
   }
 
-  // Render Body Matrix
-  for (let r = 0; r < rows; r++) {
-    const row = frame[r];
-    for (let c = 0; c < row.length; c++) {
-      const ch = row[c];
-      if (ch === '.') continue;
-      ctx.fillStyle = FOX_PALETTE[ch] || accentColor;
-      ctx.fillRect(startX + c * pxSize, startY + r * pxSize, pxSize, pxSize);
-    }
-  }
+  // 2. 4 Articulated Galloping Legs (Russet upper + Black stockings)
+  const strideF = Math.sin(t * 9) * 0.34;
+  const strideB = Math.cos(t * 9) * 0.34;
+  const legSpecs = [
+    { root: P(0.32, -0.05, -0.18), knee: P(0.36 + strideF * 0.7, -0.38 + Math.max(0, strideF) * 0.25, -0.19), paw: P(0.38 + strideF, -0.72 + Math.max(0, strideF) * 0.35, -0.18) },
+    { root: P(0.32, -0.05, 0.18),  knee: P(0.36 - strideF * 0.7, -0.38 + Math.max(0, -strideF) * 0.25, 0.19), paw: P(0.38 - strideF, -0.72 + Math.max(0, -strideF) * 0.35, 0.18) },
+    { root: P(-0.48, -0.02, -0.17), knee: P(-0.54 + strideB * 0.7, -0.38 + Math.max(0, strideB) * 0.25, -0.18), paw: P(-0.52 + strideB, -0.72 + Math.max(0, strideB) * 0.35, -0.17) },
+    { root: P(-0.48, -0.02, 0.17),  knee: P(-0.54 - strideB * 0.7, -0.38 + Math.max(0, -strideB) * 0.25, 0.18), paw: P(-0.52 - strideB, -0.72 + Math.max(0, -strideB) * 0.35, 0.17) }
+  ];
+  legSpecs.forEach(l => {
+    drawPixelLimb3D(l.root, l.knee, '#ea580c', '#9a3412', cx, cy, scale, pxStep);
+    drawPixelLimb3D(l.knee, l.paw, '#1e1b24', '#090d16', cx, cy, scale, pxStep * 0.9);
+  });
 
-  // Drifting 8-Bit Golden & Persona Stardust Pixels
-  for (let p = 0; p < 22; p++) {
-    const pPhase = t * 2.4 + p * 0.65;
-    const sx = Math.round(startX - pxSize * 8 + ((p * 37 + Math.floor(t * 28)) % (spriteW + pxSize * 10)));
-    const sy = Math.round(startY + Math.sin(pPhase) * (spriteH * 0.5) + spriteH * 0.45);
-    ctx.globalAlpha = 0.5 + Math.sin(pPhase * 2) * 0.4;
+  // 3. Biomechanical Ivory & Gold Armored Torso + White Chest Ruff
+  const neckTop = P(0.45, 0.34, 0), backMid = P(-0.08, 0.26, 0), rump = P(-0.54, 0.22, 0);
+  const chestLow = P(0.42, -0.16, 0), bellyLow = P(-0.12, -0.14, 0), hipLow = P(-0.52, -0.06, 0);
+  const sideL = P(0.05, 0.08, -0.24), sideR = P(0.05, 0.08, 0.24);
+
+  // Left & Right Ivory Armor Panels with Gold Trim
+  drawPixelPoly3D([neckTop, backMid, sideL, chestLow], '#f8fafc', '#fbbf24', cx, cy, scale, pxStep);
+  drawPixelPoly3D([backMid, rump, hipLow, bellyLow, sideL], '#e2e8f0', '#fbbf24', cx, cy, scale, pxStep);
+  drawPixelPoly3D([neckTop, backMid, sideR, chestLow], '#f8fafc', '#fbbf24', cx, cy, scale, pxStep);
+  drawPixelPoly3D([backMid, rump, hipLow, bellyLow, sideR], '#cbd5e1', '#fbbf24', cx, cy, scale, pxStep);
+  // White Fur Chest Ruff
+  drawPixelPoly3D([P(0.54, 0.24, 0), P(0.38, 0.16, -0.2), P(0.42, -0.2, 0), P(0.38, 0.16, 0.2)], '#ffffff', '#94a3b8', cx, cy, scale, pxStep);
+
+  // 4. Chimeric 3D Head (Left Russet Fox + Right Dark Obsidian Volcanic Crest)
+  const nose = P(0.96, 0.26 + gallop * 0.03, 0);
+  const jaw = P(0.74, 0.16 + gallop * 0.03, 0);
+  const browC = P(0.68, 0.46, 0);
+  const cheekL = P(0.56, 0.28, -0.22), cheekR = P(0.56, 0.28, 0.22);
+  const earL = P(0.52, 0.76, -0.18), earR = P(0.52, 0.76, 0.18);
+
+  // Left Organic Fox Side (Russet + White Cheek + Amber Eye)
+  drawPixelPoly3D([nose, browC, cheekL], '#ea580c', '#090d16', cx, cy, scale, pxStep);
+  drawPixelPoly3D([nose, cheekL, jaw], '#f8fafc', '#090d16', cx, cy, scale, pxStep);
+  drawPixelPoly3D([browC, earL, cheekL], '#ea580c', '#090d16', cx, cy, scale, pxStep);
+
+  // Right Obsidian Volcanic Side (Charcoal/Obsidian + Glowing Ember Eye)
+  drawPixelPoly3D([nose, browC, cheekR], '#1e1b24', '#3f3b4d', cx, cy, scale, pxStep);
+  drawPixelPoly3D([nose, cheekR, jaw], '#272330', '#090d16', cx, cy, scale, pxStep);
+  drawPixelPoly3D([browC, earR, cheekR], '#18151d', '#3f3b4d', cx, cy, scale, pxStep);
+
+  // Eyes & Nose Tip
+  const eyeL = project(...P(0.75, 0.35, -0.11), cx, cy, scale);
+  const eyeR = project(...P(0.75, 0.35, 0.11), cx, cy, scale);
+  const noseTip = project(...nose, cx, cy, scale);
+  ctx.fillStyle = '#fbbf24'; ctx.fillRect(Math.round(eyeL.x), Math.round(eyeL.y), pxStep * 1.4, pxStep * 1.4);
+  ctx.fillStyle = '#ef4444'; ctx.fillRect(Math.round(eyeR.x), Math.round(eyeR.y), pxStep * 1.5, pxStep * 1.5);
+  ctx.fillStyle = '#090d16'; ctx.fillRect(Math.round(noseTip.x - pxStep), Math.round(noseTip.y - pxStep), pxStep * 1.8, pxStep * 1.8);
+
+  // 5. Golden & Persona Pixel Stardust Trail
+  for (let p = 0; p < 16; p++) {
+    const trailAngle = orbit - 0.25 - p * 0.08;
+    const sp = project(Math.cos(trailAngle) * 1.15, fy + Math.sin(t * 4 + p) * 0.25, Math.sin(trailAngle) * 0.95, cx, cy, scale);
+    ctx.globalAlpha = Math.max(0.15, 0.85 - p * 0.05);
     ctx.fillStyle = p % 3 === 0 ? accentColor : '#fbbf24';
-    ctx.fillRect(sx, sy, pxSize * 0.75, pxSize * 0.75);
+    ctx.fillRect(Math.round(sp.x), Math.round(sp.y), pxStep * 1.2, pxStep * 1.2);
   }
   ctx.restore();
 }
@@ -309,7 +316,7 @@ function render() {
     for (let i = 0; i < 5; i++) drawRing3D(0.65 + i * 0.22, 0, t * (0.7 + i * 0.18), i * 0.55, 44, cx, cy, scale, 0.85, 1.4);
     const eq = drawPolyRing3D(0.55, 0, 8, t, cx, cy, scale, 0.9, 1.4);
     eq.forEach(p => { drawLine3D([0, 0.55, 0], p, cx, cy, scale, 0.75, 1.2); drawLine3D([0, -0.55, 0], p, cx, cy, scale, 0.75, 1.2); drawNode3D(p, cx, cy, scale, 0.022); });
-    drawNode3D([0, 0, 0], cx, cy, scale, 0.18 + Math.sin(t * 4) * 0.03, 0.95);
+    drawNode3D(, cx, cy, scale, 0.18 + Math.sin(t * 4) * 0.03, 0.95);
 
   } else if (st.form === 'lantern') {
     const bob = Math.sin(t * 2) * 0.1, top = [0, 1.22 + bob, 0], bot = [0, -1.08 + bob, 0];
@@ -326,7 +333,7 @@ function render() {
     drawNode3D([0, 0.05 + bob, 0], cx, cy, scale, 0.16 + Math.sin(t * 6) * 0.04, 1);
 
   } else if (st.form === 'fox') {
-    draw8BitChimericFox(cx, cy, scale, t, color);
+    draw3DChimericRunningFox(cx, cy, scale, t, color);
 
   } else {
     const bob = Math.sin(t * 1.8) * 0.07;
