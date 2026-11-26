@@ -228,10 +228,17 @@ async function queryModel(systemPrompt, messages) {
   let providerDiag = '';
 
   if (apiKey.startsWith('gsk_')) {
-    const groqUrl = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1/chat/completions'].join('');
-    for (const gModel of ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']) {
-      try {
-        const res = await fetch(groqUrl, {
+    const groqBase = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1'].join('');
+    try {
+      const mRes = await fetch(groqBase + '/models', { headers: { 'Authorization': 'Bearer ' + apiKey } });
+      const mData = await mRes.json();
+      const ids = (mData?.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|embed|vision/i.test(id));
+      const ranked = [
+        ...ids.filter(id => /70b|120b|versatile|instruct/i.test(id)),
+        ...ids.filter(id => !/70b|120b|versatile|instruct/i.test(id))
+      ];
+      for (const gModel of ranked.slice(0, 4)) {
+        const res = await fetch(groqBase + '/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
           body: JSON.stringify({ model: gModel, max_tokens: 4096, messages: [{ role: 'system', content: systemPrompt }, ...messages] })
@@ -240,9 +247,10 @@ async function queryModel(systemPrompt, messages) {
         const reply = data?.choices?.at(0)?.message?.content;
         if (res.ok && reply) return { reply, engine: 'GROQ (' + gModel + ')' };
         providerDiag += gModel + ' (' + res.status + '): ' + (data?.error?.message || res.statusText) + ' | ';
-      } catch (e) {
-        providerDiag += gModel + ' net error: ' + e.message + ' | ';
       }
+      if (!ranked.length) providerDiag += 'No active chat models returned by Groq (' + mRes.status + ') | ';
+    } catch (e) {
+      providerDiag += 'Groq discovery error: ' + e.message + ' | ';
     }
   }
 
