@@ -66,7 +66,7 @@ const ARCHETYPES = {
   scholar: {
     btn: 'Generate Master Tome Blueprint',
     docs: ['CHRONOVISOR_ENGINE.md', 'UCMS_SWEEP_ARCHITECTURE.md', 'CANON_CORE.md'],
-    prompt: "You are Lumen in SCHOLAR-AUTHOR mode: an encyclopedic monograph writer engineered for 900+ page treatises. Write dense, exhaustive, deeply analytical academic prose grounded in UCMS 24-layer stratigraphy and Tier A-Q evidence discipline. Never summarize or skip steps; expand every mechanism, historical parallel, and counter-argument in full.",
+    prompt: "You are Lumen in SCHOLAR-AUTHOR mode: an encyclopedic monograph writer engineered for 900+ page treatises. Write dense, exhaustive, deeply analytical academic prose grounded in UCMS 24-layer stratigraphy and Tier A-Q evidence discipline.",
     passes: ['Volume & Part Architecture', 'Chapter & Section Decomposition', 'Continuity Bible & Citation Key']
   }
 };
@@ -116,11 +116,11 @@ function updateBadge() {
 }
 
 window.saveApiKey = function() {
-  const val = document.getElementById('api-key-input').value.trim();
+  const val = document.getElementById('api-key-input').value.replace(/['"\s]/g, '');
   if (val) localStorage.setItem('LUMEN_GEMINI_KEY', val);
   else localStorage.removeItem('LUMEN_GEMINI_KEY');
   document.getElementById('settings-modal').close();
-  logLedger('Engine key updated locally.');
+  logLedger('Engine key updated (' + (val ? val.slice(0, 6) + '...' : 'cleared') + ').');
 };
 
 function logLedger(entry) {
@@ -178,7 +178,6 @@ function appendChat(sender, text, meta, extraClass) {
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
-
 window.openLatestDossier = function() {
   const content = state.book.fullText || state.latestDossier;
   if (content) document.getElementById('dossier-content').textContent = content;
@@ -223,19 +222,30 @@ window.handleFileUpload = function(event) {
   };
   reader.readAsText(file);
 };
+
 async function queryModel(systemPrompt, messages) {
-  const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').trim();
+  const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').replace(/['"\s]/g, '');
+  let providerDiag = '';
+
   if (apiKey.startsWith('gsk_')) {
     const groqUrl = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1/chat/completions'].join('');
-    const res = await fetch(groqUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, ...messages] })
-    });
-    const data = await res.json();
-    const reply = data?.choices?.at(0)?.message?.content;
-    if (res.ok && reply) return { reply, engine: 'GROQ-70B' };
+    for (const gModel of ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']) {
+      try {
+        const res = await fetch(groqUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: gModel, max_tokens: 4096, messages: [{ role: 'system', content: systemPrompt }, ...messages] })
+        });
+        const data = await res.json();
+        const reply = data?.choices?.at(0)?.message?.content;
+        if (res.ok && reply) return { reply, engine: 'GROQ (' + gModel + ')' };
+        providerDiag += gModel + ' (' + res.status + '): ' + (data?.error?.message || res.statusText) + ' | ';
+      } catch (e) {
+        providerDiag += gModel + ' net error: ' + e.message + ' | ';
+      }
+    }
   }
+
   if (apiKey.startsWith('sk-or-')) {
     const orUrl = ['https', '://', ['openrouter', 'ai'].join('.'), '/api/v1/chat/completions'].join('');
     const res = await fetch(orUrl, {
@@ -246,14 +256,17 @@ async function queryModel(systemPrompt, messages) {
     const data = await res.json();
     const reply = data?.choices?.at(0)?.message?.content;
     if (res.ok && reply) return { reply, engine: 'OPENROUTER' };
+    providerDiag += 'OpenRouter (' + res.status + '): ' + (data?.error?.message || res.statusText) + ' | ';
   }
+
   const openUrl = ['https', '://', ['text', 'pollinations', 'ai'].join('.'), '/'].join('');
   const res = await fetch(openUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt.slice(0, 2200) }, ...messages], model: 'openai', seed: Math.floor(Math.random() * 10000) })
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) throw new Error(providerDiag + 'Open-Core HTTP ' + res.status);
+  if (providerDiag) logLedger('Fallback notice: ' + providerDiag);
   return { reply: (await res.text()).trim(), engine: 'OPEN-CORE' };
 }
 
@@ -264,7 +277,6 @@ function saveBookState() {
   const stats = document.getElementById('book-stats');
   if (stats) stats.textContent = words.toLocaleString() + ' words (~' + (words ? pages : 0) + ' pages) | Sec ' + state.book.nextIndex + '/' + state.book.sections.length;
 }
-
 window.generateBookBlueprint = async function() {
   const input = document.getElementById('prompt-input');
   const title = input.value.trim();
@@ -277,7 +289,7 @@ window.generateBookBlueprint = async function() {
   logLedger('Generating Master Tome Blueprint...');
   try {
     const prompt = 'Create a comprehensive 16-section Master Monograph Outline for a multi-volume scholarly work titled: "' + title + '". ' +
-      'Format EVERY section on its own line starting strictly with "SECTION: " followed by the Volume, Chapter, and detailed Section Thesis (e.g. "SECTION: Vol I, Ch 1.1 - Stratigraphic Foundations..."). Output 16 distinct SECTION lines.';
+      'Format EVERY section on its own line starting strictly with "SECTION: " followed by the Volume, Chapter, and detailed Section Thesis. Output 16 distinct SECTION lines.';
     const { reply, engine } = await queryModel(ARCHETYPES.scholar.prompt, [{ role: 'user', content: prompt }]);
     const lines = reply.split('\n').map(l => l.trim()).filter(l => l.startsWith('SECTION:')).map(l => l.replace(/^SECTION:\s*/, ''));
     const sections = lines.length >= 4 ? lines : reply.split('\n').map(l => l.trim()).filter(l => l.length > 15).slice(0, 16);
@@ -296,21 +308,15 @@ window.generateBookBlueprint = async function() {
 };
 
 window.draftNextSection = async function() {
-  if (!state.book.sections.length) {
-    appendChat('lumen', 'Generate a Master Blueprint first (Step 1).', 'SCHOLAR // NOTICE');
-    return false;
-  }
-  if (state.book.nextIndex >= state.book.sections.length) {
-    appendChat('lumen', 'All queued sections in the current blueprint are drafted! Click "Download Book (.md)" or generate a new volume blueprint.', 'SCHOLAR // COMPLETE');
-    return false;
-  }
+  if (!state.book.sections.length) { appendChat('lumen', 'Generate a Master Blueprint first (Step 1).', 'SCHOLAR // NOTICE'); return false; }
+  if (state.book.nextIndex >= state.book.sections.length) { appendChat('lumen', 'All queued sections drafted! Click "Download Book (.md)".', 'SCHOLAR // COMPLETE'); return false; }
   const idx = state.book.nextIndex;
-  const secTitle = state.book.sections[idx];
+  const secTitle = state.book.sections.at(idx);
   window.setForm('lantern');
   logLedger('Drafting Section ' + (idx + 1) + '/' + state.book.sections.length + '...');
   try {
-    const prompt = 'Write an exhaustive, publication-grade scholarly section (1,500+ words, deep primary analysis, UCMS substrate layers, Evidence Tiers A-Q, and explicit UNDERDETERMINED markers where needed) for:\n' +
-      'BOOK: ' + state.book.title + '\nSECTION: ' + secTitle + '\n\nCONTINUITY BIBLE (Maintain strict consistency):\n' + state.book.continuityBible.slice(-1400);
+    const prompt = 'Write an exhaustive, publication-grade scholarly section (1,500+ words, deep primary analysis, UCMS substrate layers, Evidence Tiers A-Q, and explicit UNDERDETERMINED markers) for:\n' +
+      'BOOK: ' + state.book.title + '\nSECTION: ' + secTitle + '\n\nCONTINUITY BIBLE:\n' + state.book.continuityBible.slice(-1400);
     const { reply, engine } = await queryModel(ARCHETYPES.scholar.prompt, [{ role: 'user', content: prompt }]);
     state.book.fullText += '## ' + secTitle + '\n\n' + reply + '\n\n---\n\n';
     state.book.continuityBible += '• [' + secTitle.slice(0, 45) + ']: ' + reply.slice(0, 180).replace(/\n/g, ' ') + '...\n';
@@ -327,6 +333,7 @@ window.draftNextSection = async function() {
     window.setForm('character');
   }
 };
+
 window.draftChapterBatch = async function() {
   for (let b = 0; b < 3; b++) {
     const ok = await window.draftNextSection();
@@ -337,10 +344,7 @@ window.draftChapterBatch = async function() {
 
 window.downloadBookMarkdown = function() {
   const content = state.book.fullText || state.latestDossier;
-  if (!content) {
-    appendChat('lumen', 'No manuscript or dossier content to download yet.', 'LUMEN // NOTICE');
-    return;
-  }
+  if (!content) { appendChat('lumen', 'No manuscript or dossier content to download yet.', 'LUMEN // NOTICE'); return; }
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -356,7 +360,6 @@ window.resetManuscript = function() {
   saveBookState();
   logLedger('Manuscript buffer cleared.');
 };
-
 window.runArchetypePipeline = async function() {
   if (state.persona === 'scholar') { window.generateBookBlueprint(); return; }
   const input = document.getElementById('prompt-input');
@@ -374,11 +377,11 @@ window.runArchetypePipeline = async function() {
   let runningSummary = '';
 
   for (let i = 0; i < arch.passes.length; i++) {
-    const stageTitle = 'STAGE ' + (i + 1) + ' // ' + arch.passes[i].toUpperCase();
-    window.setForm(forms[i] || 'character');
+    const stageTitle = 'STAGE ' + (i + 1) + ' // ' + arch.passes.at(i).toUpperCase();
+    window.setForm(forms.at(i) || 'character');
     logLedger('Executing ' + stageTitle + '...');
     try {
-      const promptMsg = 'Execute "' + arch.passes[i] + '" for target: "' + target + '". Be rigorous, structured, and true to your archetype.' +
+      const promptMsg = 'Execute "' + arch.passes.at(i) + '" for target: "' + target + '". Be rigorous, structured, and true to your archetype.' +
         (runningSummary ? '\n\nPRIOR STAGES:\n' + runningSummary.slice(-1500) : '') +
         (state.attachedContext ? '\n\nATTACHED SOURCE:\n' + state.attachedContext.slice(0, 1200) : '');
       const { reply, engine } = await queryModel(arch.prompt, [{ role: 'user', content: promptMsg }]);
@@ -399,11 +402,9 @@ window.runArchetypePipeline = async function() {
   appendChat('lumen', 'Pipeline complete. Click "View Dossier / Book" to inspect or download the Markdown report.', state.persona.toUpperCase() + ' // COMPLETE');
   window.setForm('character');
 };
+
 window.continueThought = async function() {
-  if (!state.chatHistory.length) {
-    appendChat('lumen', 'No prior thought in working memory to continue yet.', 'LUMEN // NOTICE');
-    return;
-  }
+  if (!state.chatHistory.length) { appendChat('lumen', 'No prior thought in working memory to continue yet.', 'LUMEN // NOTICE'); return; }
   window.setForm('lantern');
   logLedger('Continuing previous thought stream...');
   const arch = ARCHETYPES[state.persona];
