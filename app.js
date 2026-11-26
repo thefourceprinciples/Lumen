@@ -130,12 +130,51 @@ function logLedger(entry) {
   box.scrollTop = box.scrollHeight;
 }
 
+function formatLumenMarkdown(raw) {
+  const esc = String(raw).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  const lines = esc.split('\n');
+  let out = [], inTable = false, tableRows = [];
+
+  const flushTable = () => {
+    if (!tableRows.length) return;
+    let html = '<table><thead><tr>' + tableRows.at(0).map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>';
+    for (let r = 1; r < tableRows.length; r++) {
+      html += '<tr>' + tableRows.at(r).map(c => '<td>' + c + '</td>').join('') + '</tr>';
+    }
+    out.push(html + '</tbody></table>');
+    tableRows = [];
+    inTable = false;
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      const cells = trimmed.slice(1, -1).split('|').map(c => c.trim());
+      if (cells.every(c => /^[-:]+$/.test(c))) continue;
+      inTable = true;
+      tableRows.push(cells);
+      continue;
+    }
+    if (inTable) flushTable();
+
+    if (trimmed.startsWith('### ')) out.push('<h4>' + trimmed.slice(4) + '</h4>');
+    else if (trimmed.startsWith('## ')) out.push('<h3>' + trimmed.slice(3) + '</h3>');
+    else if (trimmed === '---') out.push('<hr style="border:0;border-top:1px solid var(--border-glow);margin:8px 0;"/>');
+    else out.push(line);
+  }
+  if (inTable) flushTable();
+
+  return out.join('\n')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
 function appendChat(sender, text, meta, extraClass) {
   const log = document.getElementById('chat-log');
   const div = document.createElement('div');
   div.className = 'msg ' + sender + (extraClass ? ' ' + extraClass : '');
-  const safeText = String(text).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  div.innerHTML = '<div class="msg-meta">' + meta + '</div>' + safeText;
+  const formatted = sender === 'lumen' ? formatLumenMarkdown(text) : String(text).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  div.innerHTML = '<div class="msg-meta">' + meta + '</div>' + formatted;
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
