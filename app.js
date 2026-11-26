@@ -97,10 +97,11 @@ window.setForm = function(f) { state.form = f; updateBadge(); };
 
 window.toggleLayout = function() {
   state.layout = state.layout === 'docked' ? 'roam' : 'docked';
-  document.body.classList.toggle('layout-docked', state.layout === 'docked');
-  document.body.classList.toggle('layout-roam', state.layout === 'roam');
+  document.body.classList.remove('layout-docked', 'layout-roam');
+  document.body.classList.add('layout-' + state.layout);
   document.getElementById('btn-layout').textContent = 'Layout: ' + (state.layout === 'docked' ? 'Docked' : 'Roam');
-  window.dispatchEvent(new Event('resize'));
+  requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 120);
 };
 
 window.toggleTheme = function() {
