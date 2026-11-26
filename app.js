@@ -255,21 +255,31 @@ async function queryModel(systemPrompt, messages) {
 
   if (apiKey.startsWith('gsk_')) {
     const groqBase = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1'].join('');
-    const cachedModel = localStorage.getItem('LUMEN_GROQ_MODEL');
-    if (cachedModel && !/whisper|tts|orpheus|playai|guard|embed|vision/i.test(cachedModel)) {
-      try {
+    const tryGroqModel = async (mId) => {
+      for (let attempt = 0; attempt < 2; attempt++) {
         const res = await fetch(groqBase + '/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: cachedModel, max_tokens: 2400, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
+          body: JSON.stringify({ model: mId, max_tokens: 2400, temperature: 0.55, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
         });
         const data = await res.json();
         const reply = data?.choices?.at(0)?.message?.content;
-        if (res.ok && reply) return { reply, engine: 'GROQ (' + cachedModel + ')' };
-        localStorage.removeItem('LUMEN_GROQ_MODEL');
-      } catch (_) {
-        localStorage.removeItem('LUMEN_GROQ_MODEL');
+        if (res.ok && reply) return { ok: true, reply };
+        if (res.status === 429 && attempt === 0) {
+          logLedger('Groq TPM cooling down (8s)...');
+          await new Promise(r => setTimeout(r, 8000));
+          continue;
+        }
+        return { ok: false, err: mId + ' (' + res.status + '): ' + (data?.error?.message || res.statusText) };
       }
+    };
+
+    const cachedModel = localStorage.getItem('LUMEN_GROQ_MODEL');
+    if (cachedModel && !/whisper|tts|orpheus|playai|guard|embed|vision/i.test(cachedModel)) {
+      const hit = await tryGroqModel(cachedModel);
+      if (hit.ok) return { reply: hit.reply, engine: 'GROQ (' + cachedModel + ')' };
+      localStorage.removeItem('LUMEN_GROQ_MODEL');
+      providerDiag += hit.err + ' | ';
     }
 
     try {
@@ -280,24 +290,18 @@ async function queryModel(systemPrompt, messages) {
         ...ids.filter(id => /70b|120b|versatile|instruct/i.test(id)),
         ...ids.filter(id => !/70b|120b|versatile|instruct/i.test(id))
       ];
-      for (const gModel of ranked.slice(0, 4)) {
-        const res = await fetch(groqBase + '/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: gModel, max_tokens: 2400, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
-        });
-        const data = await res.json();
-        const reply = data?.choices?.at(0)?.message?.content;
-        if (res.ok && reply) {
+      for (const gModel of ranked.slice(0, 3)) {
+        const hit = await tryGroqModel(gModel);
+        if (hit.ok) {
           localStorage.setItem('LUMEN_GROQ_MODEL', gModel);
-          return { reply, engine: 'GROQ (' + gModel + ')' };
+          return { reply: hit.reply, engine: 'GROQ (' + gModel + ')' };
         }
-        providerDiag += gModel + ' (' + res.status + '): ' + (data?.error?.message || res.statusText) + ' | ';
+        providerDiag += hit.err + ' | ';
       }
-      if (!ranked.length) providerDiag += 'No active chat models returned by Groq (' + mRes.status + ') | ';
     } catch (e) {
-      providerDiag += 'Groq discovery error: ' + e.message + ' | ';
+      providerDiag += 'Groq net error: ' + e.message + ' | ';
     }
+    throw new Error(providerDiag || 'Groq rate limit reached — wait 15 seconds and click again.');
   }
 
   if (apiKey.startsWith('sk-or-')) {
@@ -320,7 +324,6 @@ async function queryModel(systemPrompt, messages) {
     body: JSON.stringify({ messages: [{ role: 'system', content: safeSys.slice(0, 2000) }, ...safeMsgs.slice(-2)], model: 'openai', seed: Math.floor(Math.random() * 10000) })
   });
   if (!res.ok) throw new Error(providerDiag + 'Open-Core HTTP ' + res.status);
-  if (providerDiag) logLedger('Fallback notice: ' + providerDiag);
   return { reply: (await res.text()).trim(), engine: 'OPEN-CORE' };
 }
 
@@ -333,7 +336,8 @@ function saveBookState() {
 }
 window.generateBookBlueprint = async function() {
   const input = document.getElementById('prompt-input');
-  const title = input.value.trim();
+  const lastUserMsg = [...state.chatHistory].reverse().find(m => m.role === 'user')?.content || '';
+  const title = input.value.trim() || lastUserMsg.trim();
   if (!title) {
     appendChat('lumen', 'Enter your book title, thesis, or UCMS research subject in the prompt box first, then click "1. Master Blueprint".', 'SCHOLAR // NOTICE');
     return;
