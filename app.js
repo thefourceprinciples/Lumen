@@ -399,6 +399,32 @@ window.runArchetypePipeline = async function() {
   appendChat('lumen', 'Pipeline complete. Click "View Dossier / Book" to inspect or download the Markdown report.', state.persona.toUpperCase() + ' // COMPLETE');
   window.setForm('character');
 };
+window.continueThought = async function() {
+  if (!state.chatHistory.length) {
+    appendChat('lumen', 'No prior thought in working memory to continue yet.', 'LUMEN // NOTICE');
+    return;
+  }
+  window.setForm('lantern');
+  logLedger('Continuing previous thought stream...');
+  const arch = ARCHETYPES[state.persona];
+  const fullSystem = arch.prompt + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
+  const contMessages = [
+    ...state.chatHistory,
+    { role: 'user', content: 'Continue directly from where your previous response left off, completing any unfinished tables, points, or deeper implications without repeating what you already said.' }
+  ];
+  try {
+    const { reply, engine } = await queryModel(fullSystem, contMessages);
+    state.chatHistory.push({ role: 'assistant', content: reply });
+    state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+    updateVitalsUI();
+    logLedger('Continuation emitted via ' + engine + '.');
+    appendChat('lumen', reply, 'LUMEN // ' + state.persona.toUpperCase() + ' (CONTINUED)');
+  } catch (err) {
+    appendChat('lumen', 'Relay status: ' + err.message, 'LUMEN // FAULT');
+  } finally {
+    window.setForm('character');
+  }
+};
 
 window.sendMessage = async function() {
   const input = document.getElementById('prompt-input');
