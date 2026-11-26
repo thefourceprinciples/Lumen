@@ -207,21 +207,27 @@ window.copyDossier = function() {
   logLedger('Copied text to clipboard.');
 };
 
-window.sweepSubreddit = async function() {
-  window.setForm('fox');
-  logLedger('Sweeping r/SubspacePhysics...');
-  const redditUrl = ['https', '://', 'www.', 'reddit.', 'com/r/SubspacePhysics/new.json?limit=5'].join('');
-  try {
-    const res = await fetch(redditUrl);
-    const data = await res.json();
-    const posts = (data?.data?.children || []).map(c => '- ' + c.data.title + ': ' + (c.data.selftext || '').slice(0, 220));
-    state.attachedContext = 'LIVE r/SubspacePhysics FEED:\n' + posts.join('\n');
-    appendChat('lumen', 'Retrieved ' + posts.length + ' posts from r/SubspacePhysics:\n\n' + posts.join('\n'), 'TOOL // SUBREDDIT SWEEP');
-  } catch (err) {
-    appendChat('lumen', 'Subreddit fetch blocked by CORS (' + err.message + ').', 'TOOL // NOTICE');
-  } finally {
-    setTimeout(() => window.setForm('character'), 900);
+window.exportSessionLog = function() {
+  if (!state.chatHistory.length) {
+    appendChat('lumen', 'No conversation deltas in the current session to export yet.', 'LUMEN // NOTICE');
+    return;
   }
+  const cVal = (state.vitals.O * state.vitals.E * state.vitals.H * state.vitals.X).toFixed(3);
+  const header = '# LUMEN OBSERVATORY // SESSION Δ-LEDGER\n' +
+    '- **Active Persona:** ' + state.persona.toUpperCase() + '\n' +
+    '- **CUC Composite (C):** ' + cVal + ' (O=' + state.vitals.O + ', E=' + state.vitals.E + ', H=' + state.vitals.H + ', X=' + state.vitals.X + ', λ=' + state.vitals.lambda + ')\n' +
+    '- **Timestamp:** ' + new Date().toISOString() + '\n\n---\n\n';
+  const body = state.chatHistory
+    .map((m, i) => '## Δ_' + (i + 1) + ' // ' + m.role.toUpperCase() + '\n\n' + m.content)
+    .join('\n\n---\n\n');
+  const blob = new Blob([header + body], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Lumen_Delta_Ledger_' + state.persona + '_' + new Date().toISOString().slice(0, 10) + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  logLedger('Exported Δ-chain session ledger (.md).');
 };
 
 window.handleFileUpload = function(event) {
