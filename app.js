@@ -74,7 +74,7 @@ async function loadPersonaCanon(p) {
   const files = (ARCHETYPES[p] && ARCHETYPES[p].docs) || ['CANON_CORE.md'];
   try {
     const texts = await Promise.all(files.map(f => fetch('./docs/' + f).then(r => (r.ok ? r.text() : ''))));
-    state.canonSpine = texts.filter(Boolean).join('\n\n').slice(0, 7500);
+    state.canonSpine = texts.filter(Boolean).join('\n\n').slice(0, 3200);
     logLedger('Loaded ' + files.join(' + ') + ' from docs/.');
   } catch (_) {}
 }
@@ -82,6 +82,7 @@ async function loadPersonaCanon(p) {
 window.setPersona = function(p) {
   if (!ARCHETYPES[p]) p = 'base';
   state.persona = p;
+  state.chatHistory = [];
   document.body.className = document.body.className.replace(/\bpersona-\S+/g, '').trim() + ' persona-' + p;
   const sel = document.getElementById('persona-select');
   if (sel) sel.value = p;
@@ -237,7 +238,7 @@ window.handleFileUpload = function(event) {
   window.setForm('fox');
   const reader = new FileReader();
   reader.onload = e => {
-    const content = String(e.target.result || '').slice(0, 8000);
+    const content = String(e.target.result || '').slice(0, 4000);
     state.attachedContext = 'UPLOADED DOCUMENT (' + file.name + '):\n' + content;
     logLedger("Parsed '" + file.name + "' (" + content.length + ' chars).');
     appendChat('lumen', "Loaded '" + file.name + "' into working memory. Ready.", 'TOOL // DOCUMENT PARSER');
@@ -249,16 +250,18 @@ window.handleFileUpload = function(event) {
 async function queryModel(systemPrompt, messages) {
   const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').replace(/['"\s]/g, '');
   let providerDiag = '';
+  const safeSys = systemPrompt.slice(0, 4200);
+  const safeMsgs = messages.map(m => ({ role: m.role, content: String(m.content).slice(0, 3200) }));
 
   if (apiKey.startsWith('gsk_')) {
     const groqBase = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1'].join('');
     const cachedModel = localStorage.getItem('LUMEN_GROQ_MODEL');
-    if (cachedModel) {
+    if (cachedModel && !/whisper|tts|orpheus|playai|guard|embed|vision/i.test(cachedModel)) {
       try {
         const res = await fetch(groqBase + '/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: cachedModel, max_tokens: 4096, messages: [{ role: 'system', content: systemPrompt }, ...messages] })
+          body: JSON.stringify({ model: cachedModel, max_tokens: 2400, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
         });
         const data = await res.json();
         const reply = data?.choices?.at(0)?.message?.content;
@@ -272,7 +275,7 @@ async function queryModel(systemPrompt, messages) {
     try {
       const mRes = await fetch(groqBase + '/models', { headers: { 'Authorization': 'Bearer ' + apiKey } });
       const mData = await mRes.json();
-      const ids = (mData?.data || []).map(m => m.id).filter(id => !/whisper|tts|guard|embed|vision/i.test(id));
+      const ids = (mData?.data || []).map(m => m.id).filter(id => !/whisper|tts|orpheus|playai|guard|embed|vision/i.test(id));
       const ranked = [
         ...ids.filter(id => /70b|120b|versatile|instruct/i.test(id)),
         ...ids.filter(id => !/70b|120b|versatile|instruct/i.test(id))
@@ -281,7 +284,7 @@ async function queryModel(systemPrompt, messages) {
         const res = await fetch(groqBase + '/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: gModel, max_tokens: 4096, messages: [{ role: 'system', content: systemPrompt }, ...messages] })
+          body: JSON.stringify({ model: gModel, max_tokens: 2400, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
         });
         const data = await res.json();
         const reply = data?.choices?.at(0)?.message?.content;
@@ -302,7 +305,7 @@ async function queryModel(systemPrompt, messages) {
     const res = await fetch(orUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'meta-llama/llama-3.3-70b-instruct:free', messages: [{ role: 'system', content: systemPrompt }, ...messages] })
+      body: JSON.stringify({ model: 'meta-llama/llama-3.3-70b-instruct:free', messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
     });
     const data = await res.json();
     const reply = data?.choices?.at(0)?.message?.content;
@@ -314,7 +317,7 @@ async function queryModel(systemPrompt, messages) {
   const res = await fetch(openUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt.slice(0, 2200) }, ...messages], model: 'openai', seed: Math.floor(Math.random() * 10000) })
+    body: JSON.stringify({ messages: [{ role: 'system', content: safeSys.slice(0, 2000) }, ...safeMsgs.slice(-2)], model: 'openai', seed: Math.floor(Math.random() * 10000) })
   });
   if (!res.ok) throw new Error(providerDiag + 'Open-Core HTTP ' + res.status);
   if (providerDiag) logLedger('Fallback notice: ' + providerDiag);
@@ -367,10 +370,10 @@ window.draftNextSection = async function() {
   logLedger('Drafting Section ' + (idx + 1) + '/' + state.book.sections.length + '...');
   try {
     const prompt = 'Write an exhaustive, publication-grade scholarly section (1,500+ words, deep primary analysis, UCMS substrate layers, Evidence Tiers A-Q, and explicit UNDERDETERMINED markers) for:\n' +
-      'BOOK: ' + state.book.title + '\nSECTION: ' + secTitle + '\n\nCONTINUITY BIBLE:\n' + state.book.continuityBible.slice(-1400);
+      'BOOK: ' + state.book.title + '\nSECTION: ' + secTitle + '\n\nCONTINUITY BIBLE:\n' + state.book.continuityBible.slice(-1000);
     const { reply, engine } = await queryModel(ARCHETYPES.scholar.prompt, [{ role: 'user', content: prompt }]);
     state.book.fullText += '## ' + secTitle + '\n\n' + reply + '\n\n---\n\n';
-    state.book.continuityBible += '• [' + secTitle.slice(0, 45) + ']: ' + reply.slice(0, 180).replace(/\n/g, ' ') + '...\n';
+    state.book.continuityBible += '• [' + secTitle.slice(0, 45) + ']: ' + reply.slice(0, 150).replace(/\n/g, ' ') + '...\n';
     state.book.nextIndex += 1;
     saveBookState();
     state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
@@ -389,7 +392,7 @@ window.draftChapterBatch = async function() {
   for (let b = 0; b < 3; b++) {
     const ok = await window.draftNextSection();
     if (!ok) break;
-    await new Promise(r => setTimeout(r, 1200));
+    await new Promise(r => setTimeout(r, 1500));
   }
 };
 
@@ -433,15 +436,15 @@ window.runArchetypePipeline = async function() {
     logLedger('Executing ' + stageTitle + '...');
     try {
       const promptMsg = 'Execute "' + arch.passes.at(i) + '" for target: "' + target + '". Be rigorous, structured, and true to your archetype.' +
-        (runningSummary ? '\n\nPRIOR STAGES:\n' + runningSummary.slice(-1500) : '') +
-        (state.attachedContext ? '\n\nATTACHED SOURCE:\n' + state.attachedContext.slice(0, 1200) : '');
+        (runningSummary ? '\n\nPRIOR STAGES:\n' + runningSummary.slice(-900) : '') +
+        (state.attachedContext ? '\n\nATTACHED SOURCE:\n' + state.attachedContext.slice(0, 800) : '');
       const { reply, engine } = await queryModel(arch.prompt, [{ role: 'user', content: promptMsg }]);
       runningSummary += '\n[' + stageTitle + ']\n' + reply;
       fullReport += '## ' + stageTitle + ' (' + engine + ')\n' + reply + '\n\n';
       appendChat('lumen', reply, stageTitle, 'sweep');
       state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
       updateVitalsUI();
-      await new Promise(r => setTimeout(r, 850));
+      await new Promise(r => setTimeout(r, 1200));
     } catch (err) {
       appendChat('lumen', stageTitle + ' interrupted: ' + err.message, 'LUMEN // FAULT');
       window.setForm('character');
@@ -461,7 +464,7 @@ window.continueThought = async function() {
   const arch = ARCHETYPES[state.persona];
   const fullSystem = arch.prompt + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
   const contMessages = [
-    ...state.chatHistory,
+    ...state.chatHistory.slice(-2),
     { role: 'user', content: 'Continue directly from where your previous response left off, completing any unfinished tables, points, or deeper implications without repeating what you already said.' }
   ];
   try {
@@ -488,7 +491,7 @@ window.sendMessage = async function() {
   await new Promise(r => setTimeout(r, 80));
 
   state.chatHistory.push({ role: 'user', content: text });
-  if (state.chatHistory.length > 6) state.chatHistory = state.chatHistory.slice(-6);
+  if (state.chatHistory.length > 4) state.chatHistory = state.chatHistory.slice(-4);
 
   const arch = ARCHETYPES[state.persona];
   const fullSystem = arch.prompt + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
