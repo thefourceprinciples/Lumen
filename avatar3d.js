@@ -1,17 +1,16 @@
 const container = document.getElementById('avatar-stage');
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(45, (container.clientWidth || 600) / (container.clientHeight || 600), 0.1, 100);
+const camera = new THREE.PerspectiveCamera(45, (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight), 0.1, 100);
 camera.position.set(0, 1.1, 4.4);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setSize(container.clientWidth || 600, container.clientHeight || 600);
+renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 container.appendChild(renderer.domElement);
 
-// Studio & Rim Lighting for Metallic Gold, Ivory Armor & Obsidian Relief
 const ambientLight = new THREE.AmbientLight(0x334155, 1.4);
 scene.add(ambientLight);
 
@@ -27,7 +26,6 @@ const emberLight = new THREE.PointLight(0xf59e0b, 1.8, 8);
 emberLight.position.set(2, -1, 2);
 scene.add(emberLight);
 
-// Interactive Mouse Orbit & Wheel Zoom
 let camYaw = 0, camPitch = 0.22, camDist = 4.4, isDragging = false, prevMouse = { x: 0, y: 0 };
 renderer.domElement.style.cursor = 'grab';
 renderer.domElement.addEventListener('mousedown', e => { isDragging = true; renderer.domElement.style.cursor = 'grabbing'; prevMouse = { x: e.clientX, y: e.clientY }; });
@@ -40,14 +38,16 @@ window.addEventListener('mousemove', e => {
 });
 renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); camDist = Math.max(2.4, Math.min(7.5, camDist + e.deltaY * 0.002)); }, { passive: false });
 
-window.addEventListener('resize', () => {
-  const w = container.clientWidth || 600, h = container.clientHeight || 600;
-  camera.aspect = w / h;
+function syncStageSize() {
+  const isRoam = document.body.classList.contains('layout-roam');
+  const w = isRoam ? window.innerWidth : (container.clientWidth || 600);
+  const h = isRoam ? (window.innerHeight - 54) : (container.clientHeight || 600);
+  camera.aspect = w / Math.max(1, h);
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
-});
+}
+window.addEventListener('resize', syncStageSize);
 
-// PBR Materials
 const matRusset   = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.65, metalness: 0.05 });
 const matIvory    = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.22, metalness: 0.15 });
 const matGold     = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.20, metalness: 0.92, emissive: 0x78350f, emissiveIntensity: 0.35 });
@@ -65,7 +65,6 @@ const PALETTES = {
   pedagogue: 0x60a5fa, scholar: 0xfbbf24
 };
 
-// Astrolabe Observatory Base Rings
 const baseGroup = new THREE.Group();
 const ring1 = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.30, 64), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }));
 ring1.rotation.x = -Math.PI / 2; ring1.position.y = -1.15;
@@ -77,7 +76,6 @@ const foxGroup = new THREE.Group();
 const foxBody = new THREE.Group();
 foxGroup.add(foxBody);
 
-// 1. Ivory & Gold Biomechanical Torso Chassis
 const torsoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.27, 0.92, 16), matIvory);
 torsoMesh.rotation.z = Math.PI / 2;
 foxBody.add(torsoMesh);
@@ -89,7 +87,6 @@ foxBody.add(torsoMesh);
   foxBody.add(seam);
 });
 
-// Plush White Chest Ruff & Gold Collar
 const ruffMesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 1), matWhiteFur);
 ruffMesh.position.set(0.42, 0.04, 0);
 ruffMesh.scale.set(0.95, 1.15, 0.95);
@@ -100,7 +97,6 @@ collarRing.position.set(0.36, 0.08, 0);
 collarRing.rotation.set(0, Math.PI / 2, 0.35);
 foxBody.add(collarRing);
 
-// 2. Sculpted Chimeric Head (Left Russet vs. Right Jagged Obsidian Crest)
 const headGroup = new THREE.Group();
 headGroup.position.set(0.58, 0.32, 0);
 foxBody.add(headGroup);
@@ -122,7 +118,6 @@ const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), matCharcoa
 noseTip.position.set(0.41, -0.04, 0);
 headGroup.add(noseTip);
 
-// Left Russet Ear + Right Obsidian Crest Horn
 const earL = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.28, 8), matRusset);
 earL.position.set(-0.04, 0.26, -0.11);
 earL.rotation.x = -0.18;
@@ -131,14 +126,12 @@ earR.position.set(-0.05, 0.25, 0.11);
 earR.rotation.x = 0.22;
 headGroup.add(earL, earR);
 
-// Glowing Amber Left Eye & Crimson Right Eye
 const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), matAmberEye);
 eyeL.position.set(0.15, 0.03, -0.11);
 const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), matRedEye);
 eyeR.position.set(0.15, 0.03, 0.11);
 headGroup.add(eyeL, eyeR);
 
-// 3. 4 Articulated Galloping Legs (Ivory/Gold Shoulders + Russet Thighs + Charcoal Lower Legs)
 const foxLegs = [];
 [
   { x: 0.32, z: -0.18, phase: 0 },
@@ -170,7 +163,6 @@ const foxLegs = [];
   foxLegs.push({ hipPivot, kneePivot, phase: cfg.phase });
 });
 
-// 4. 9 Articulated 3D Spline Tails (4 Russet/White Fur + 5 Ivory/Gold Mechanical)
 const foxTails = [];
 for (let k = -4; k <= 4; k++) {
   const isMech = k > 0;
@@ -206,7 +198,6 @@ for (let k = -4; k <= 4; k++) {
   foxTails.push({ tailPivot, idx: k });
 }
 scene.add(foxGroup);
-// Holographic Character, Orb, Lantern & 9-Archetype Rigs
 const holoGroup = new THREE.Group();
 scene.add(holoGroup);
 
@@ -222,13 +213,11 @@ charMesh.add(headSphere, cloakCone, heartCore);
 const personaRigs = {};
 function makeRig(name) { const g = new THREE.Group(); g.visible = false; charMesh.add(g); personaRigs[name] = g; return g; }
 
-// 0. Base Core
 const rigBase = makeRig('base');
 const baseHalo = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.016, 8, 48), matHoloCore);
 baseHalo.position.y = 1.05; baseHalo.rotation.x = Math.PI * 0.35;
 rigBase.add(baseHalo);
 
-// 1. Detective: Press Hat Brim + Floating Magnifying Lens
 const rigDet = makeRig('detective');
 const hatBrim = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.56, 32), matHoloWire);
 hatBrim.position.y = 1.22; hatBrim.rotation.set(Math.PI * 0.45, 0.15, -0.1);
@@ -236,14 +225,12 @@ const lensRing = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.018, 8, 32), mat
 lensRing.position.set(0.68, 0.45, 0.35);
 rigDet.add(hatBrim, lensRing);
 
-// 2. Lab Engineer: Counter-Rotating Gyroscopic Rings
 const rigEng = makeRig('engineer');
 const engRing1 = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.015, 8, 48), matHoloCore);
 const engRing2 = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.015, 8, 48), matHoloWire);
 engRing1.position.y = 1.05; engRing2.position.y = 1.05;
 rigEng.add(engRing1, engRing2);
 
-// 3. Oracle: 16-Ray Celestial Starburst Halo
 const rigOra = makeRig('oracle');
 for (let r = 0; r < 16; r++) {
   const a = (r / 16) * Math.PI * 2;
@@ -254,7 +241,6 @@ for (let r = 0; r < 16; r++) {
   rigOra.add(ray);
 }
 
-// 4. Apothecary-Shaman: Orbiting 3D DNA Double Helix
 const rigApo = makeRig('apothecary');
 for (let i = 0; i < 12; i++) {
   const y = -0.65 + i * 0.15, a = i * 0.55;
@@ -267,7 +253,6 @@ for (let i = 0; i < 12; i++) {
   rigApo.add(rung, nodeA, nodeB);
 }
 
-// 5. Advocate-Counsel: Balanced Harmonic Scales
 const rigAdv = makeRig('advocate');
 const scaleBeam = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.03, 0.03), matHoloCore);
 scaleBeam.position.y = 0.78;
@@ -277,27 +262,23 @@ const panR = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.014, 8, 24), matHolo
 panR.position.set(0.82, 0.48, 0); panR.rotation.x = Math.PI / 2;
 rigAdv.add(scaleBeam, panL, panR);
 
-// 6. Architect-Artisan: Rotating Golden-Ratio Pentagons
 const rigArc = makeRig('architect');
 const pent1 = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.016, 6, 5), matHoloCore);
 const pent2 = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.016, 6, 5), matHoloWire);
 pent1.position.y = 0.3; pent2.position.y = 0.3;
 rigArc.add(pent1, pent2);
 
-// 7. Strategist-Economist: 3D Tactical Grid
 const rigStr = makeRig('strategist');
 const gridHelper = new THREE.GridHelper(2.2, 8, 0x2dd4bf, 0x2dd4bf);
 gridHelper.position.y = -0.95;
 rigStr.add(gridHelper);
 
-// 8. Pedagogue-Mentor: Twin Concentric Resonance Shells
 const rigPed = makeRig('pedagogue');
 const shell1 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 1), matHoloWire);
 const shell2 = new THREE.Mesh(new THREE.IcosahedronGeometry(1.02, 1), matHoloWire);
 shell1.position.y = 0.3; shell2.position.y = 0.3;
 rigPed.add(shell1, shell2);
 
-// 9. Scholar-Author: Nested Astrolabe Rings & Floating Codex
 const rigSch = makeRig('scholar');
 const astro1 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.016, 8, 48), matHoloCore);
 const astro2 = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.014, 8, 48), matHoloWire);
@@ -309,6 +290,7 @@ codexR.position.set(0.2, 0.25, 0.55); codexR.rotation.set(0.35, 0, 0.2);
 rigSch.add(astro1, astro2, codexL, codexR);
 
 holoGroup.add(charMesh);
+
 const orbMesh = new THREE.Group();
 for (let i = 0; i < 3; i++) {
   const gyro = new THREE.Mesh(new THREE.TorusGeometry(0.65 + i * 0.22, 0.015, 8, 48), matHoloCore);
@@ -350,6 +332,14 @@ function animate() {
   ring2.material.color.setHex(hex);
   starMat.color.setHex(hex);
 
+  const isRoam = (st.layout === 'roam');
+  const roamX = isRoam ? Math.cos(t * 0.45) * 1.15 : 0;
+  const roamY = isRoam ? Math.sin(t * 0.65) * 0.42 : 0;
+  const roamZ = isRoam ? Math.sin(t * 0.35) * 0.75 : 0;
+
+  baseGroup.position.set(roamX, roamY, roamZ);
+  holoGroup.position.set(roamX, roamY, roamZ);
+
   camera.position.x = Math.sin(camYaw) * Math.cos(camPitch) * camDist;
   camera.position.y = Math.sin(camPitch) * camDist + 0.25;
   camera.position.z = Math.cos(camYaw) * Math.cos(camPitch) * camDist;
@@ -365,7 +355,9 @@ function animate() {
   if (st.form === 'fox') {
     const orbit = t * 1.15;
     const gallop = Math.sin(t * 9);
-    foxGroup.position.set(Math.cos(orbit) * 1.15, Math.abs(gallop) * 0.14 - 0.25, Math.sin(orbit) * 0.95);
+    const rx = isRoam ? 1.85 : 1.15;
+    const rz = isRoam ? 1.45 : 0.95;
+    foxGroup.position.set(Math.cos(orbit) * rx, Math.abs(gallop) * 0.14 - 0.25 + roamY * 0.5, Math.sin(orbit) * rz);
     foxGroup.rotation.y = -orbit - Math.PI / 2;
     foxBody.rotation.z = gallop * 0.08;
 
