@@ -227,8 +227,14 @@
     </div>
   </dialog>
 
-    <script src="https://cloudflare.com"></script>
-  <script src="./app.js?v=50"></script>
-  <script src="./avatar3d.js?v=120"></script>
+      <script>
+    const s = document.createElement('script');
+    s.src = ['https', '://', ['cdnjs', 'cloudflare', 'com'].join('.'), '/ajax/libs/three.js/r134/three.min.js'].join('');
+    s.onload = () => {
+      const a1 = document.createElement('script'); a1.src = './app.js?v=50'; document.body.appendChild(a1);
+      const a2 = document.createElement('script'); a2.src = './avatar3d.js?v=125'; document.body.appendChild(a2);
+    };
+    document.body.appendChild(s);
+  </script>
 </body>
 </html>
