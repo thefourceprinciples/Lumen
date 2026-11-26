@@ -232,19 +232,18 @@ window.exportSessionLog = function() {
   logLedger('Exported Δ-chain session ledger (.md).');
 };
 
-window.handleFileUpload = function(event) {
-  const file = Array.from(event.target.files || []).at(0);
-  if (!file) return;
-  window.setForm('fox');
-  const reader = new FileReader();
-  reader.onload = e => {
-    const content = String(e.target.result || '').slice(0, 4000);
-    state.attachedContext = 'UPLOADED DOCUMENT (' + file.name + '):\n' + content;
-    logLedger("Parsed '" + file.name + "' (" + content.length + ' chars).');
-    appendChat('lumen', "Loaded '" + file.name + "' into working memory. Ready.", 'TOOL // DOCUMENT PARSER');
-    setTimeout(() => window.setForm('character'), 800);
-  };
-  reader.readAsText(file);
+window.loadSampleOpsAudit = function() {
+  const sampleContract =
+    'COMMERCIAL VENDOR & EQUIPMENT SERVICE AGREEMENT (SAMPLE AUDIT)\n' +
+    '1. TERM & AUTO-RENEWAL: Initial 36-month term automatically renews for successive 36-month periods unless Client gives written notice via certified mail 180 days prior to expiration.\n' +
+    '2. PRICING & FUEL SURCHARGES: Vendor may adjust unit supply rates and equipment maintenance fees unilaterally by up to 14% annually without prior notice, plus variable fuel/logistics surcharges.\n' +
+    '3. DATA & DERIVATIVE RIGHTS: Vendor retains a perpetual, royalty-free right to aggregate, license, and commercialize Client POS, inventory, and routing telemetry.\n' +
+    '4. INDEMNIFICATION & DOWNTIME: Client indemnifies Vendor against all third-party claims arising from equipment failure; Vendor liability is capped at one (1) month of base service fees with zero SLA credit for emergency downtime.';
+  state.attachedContext = sampleContract;
+  window.setPersona('advocate');
+  document.getElementById('prompt-input').value = 'Commercial Vendor & Equipment Service Agreement (36-month auto-renewal, 14% price hike, POS data license, liability cap)';
+  logLedger('Loaded Sample Commercial Ops & Vendor Agreement into working memory.');
+  appendChat('lumen', 'Loaded Sample Commercial Vendor Agreement into working memory and switched to ADVOCATE-COUNSEL mode. Click "Run Jurisprudence Audit (3-Pass)" to run the live client demo.', 'DEMO // OPS & CONTRACT AUDITOR');
 };
 
 async function queryModel(systemPrompt, messages) {
