@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lumen — 9-Archetype Observatory</title>
+  <title>Lumen — 10-Archetype Observatory &amp; Long-Form Book Engine</title>
   <style>
     :root {
       --bg-primary: #060913;
@@ -54,7 +54,7 @@
     button:hover, button.active { background: var(--accent); color: #060913; font-weight: 600; }
     main {
       position: relative; flex: 1; display: grid;
-      grid-template-columns: 290px 1fr 410px; gap: 14px; padding: 14px; overflow: hidden;
+      grid-template-columns: 290px 1fr 420px; gap: 14px; padding: 14px; overflow: hidden;
     }
     body.layout-roam main { display: block; }
     #avatar-stage {
@@ -68,7 +68,7 @@
       padding: 14px; display: flex; flex-direction: column; gap: 10px; z-index: 10; overflow-y: auto;
     }
     body.layout-roam .panel-left { position: absolute; top: 14px; left: 14px; width: 290px; max-height: calc(100vh - 84px); }
-    body.layout-roam .panel-right { position: absolute; top: 14px; right: 14px; width: 410px; height: calc(100vh - 84px); }
+    body.layout-roam .panel-right { position: absolute; top: 14px; right: 14px; width: 420px; height: calc(100vh - 84px); }
     h2 {
       font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.1em;
       color: var(--accent); font-family: var(--font-mono);
@@ -94,13 +94,13 @@
     .msg.user { background: rgba(255,255,255,0.07); align-self: flex-end; max-width: 88%; }
     .msg.lumen { background: rgba(56,189,248,0.09); border: 1px solid var(--border-glow); align-self: flex-start; max-width: 96%; }
     .msg.sweep { background: rgba(245,158,11,0.11); border: 1px solid var(--accent); align-self: flex-start; max-width: 98%; }
-    .msg-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); margin-bottom: 4px; }
     .msg h3, .msg h4 { color: var(--accent); margin: 8px 0 4px; font-family: var(--font-mono); font-size: 0.88rem; }
     .msg strong { color: var(--accent); font-weight: 700; }
     .msg code { background: rgba(0,0,0,0.45); padding: 1px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.8em; }
     .msg table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 0.78rem; background: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; }
     .msg th, .msg td { border: 1px solid var(--border-glow); padding: 6px 8px; text-align: left; vertical-align: top; }
     .msg th { background: rgba(56,189,248,0.14); color: var(--accent); font-family: var(--font-mono); }
+    .msg-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); margin-bottom: 4px; }
     .tool-strip { display: flex; flex-wrap: wrap; gap: 6px; }
     .input-row { display: flex; gap: 6px; }
     textarea {
@@ -175,12 +175,12 @@
 
     <div id="avatar-stage"></div>
 
-        <section class="panel panel-right">
+    <section class="panel panel-right">
       <h2>Interactive Steward Console</h2>
       <div class="tool-strip">
         <button id="btn-pipeline" class="active" onclick="runArchetypePipeline()">Run Steward Synthesis (3-Pass)</button>
         <button onclick="continueThought()">Continue Thought</button>
-        <button onclick="sweepSubreddit()">Sweep r/SubspacePhysics</button>
+        <button onclick="exportSessionLog()">Export Δ-Ledger (.md)</button>
         <button onclick="document.getElementById('file-input').click()">Parse File</button>
         <button onclick="openLatestDossier()">View Dossier / Book</button>
         <input type="file" id="file-input" accept=".txt,.md,.json,.csv" style="display:none" onchange="handleFileUpload(event)" />
@@ -200,7 +200,7 @@
 
       <div id="chat-log">
         <div class="msg lumen">
-          <div class="msg-meta">LUMEN // 9-ARCHETYPE STEWARD INTERFACE</div>
+          <div class="msg-meta">LUMEN // 10-ARCHETYPE STEWARD INTERFACE</div>
           Hold the pattern. Select any archetype in the top dropdown (including #9 Scholar-Author for recursive book writing), enter your thesis or target below, and launch.
         </div>
       </div>
@@ -214,7 +214,7 @@
   <dialog id="settings-modal">
     <h2 style="margin-bottom:10px;">Lumen Engine Connection</h2>
     <p style="font-size:0.8rem; color:#94a3b8; line-height:1.4;">
-      Optional: Paste a free email-only API key from Groq (<code>gsk_...</code>) or OpenRouter (<code>sk-or-...</code>) for high-speed 70B book drafting, or leave blank to use the built-in keyless Open-Core engine.
+      Optional: Paste a free email-only API key from Groq (<code>gsk_...</code>) or OpenRouter (<code>sk-or-...</code>) for high-speed book drafting, or leave blank to use the built-in keyless Open-Core engine.
     </p>
     <label style="font-size:0.75rem; display:block; margin-top:12px;">API_KEY (Optional)</label>
     <input type="password" id="api-key-input" placeholder="gsk_... or sk-or-... (or leave blank)" />
@@ -234,9 +234,9 @@
     </div>
   </dialog>
 
-          <script>
+  <script>
     function bootObservatory() {
-      const a1 = document.createElement('script'); a1.src = './app.js?v=110'; document.body.appendChild(a1);
+      const a1 = document.createElement('script'); a1.src = './app.js?v=120'; document.body.appendChild(a1);
       const a2 = document.createElement('script'); a2.src = './avatar3d.js?v=145'; document.body.appendChild(a2);
     }
     const s = document.createElement('script');
