@@ -82,93 +82,6 @@ function drawPolyRing3D(radius, yOffset, sides, rotOffset, cx, cy, scale, alpha 
   return pts;
 }
 
-// 8-Bit Chimeric Nine-Tailed Fox Sprite Matrices (Frame A: Prowl, Frame B: Bound)
-const FOX_PALETTE = {
-  O: '#ea580c', // Russet Fur
-  D: '#9a3412', // Deep Amber Fur
-  W: '#f8fafc', // Ivory Armor & Tail Tips
-  G: '#fbbf24', // Gold Filigree
-  B: '#1e1b24', // Obsidian Volcanic Split
-  E: '#ef4444', // Glowing Ember Eye
-  K: '#090d16'  // Dark Paw / Nose
-};
-
-const FOX_FRAME_A = [
-  '....WW................B..B..',
-  '...WOOOW.............BO.BB..',
-  '..WOOOOOW...........BOOBBBB.',
-  '..DOOOOD....WWWW....BOEBKBB.',
-  '.WOOOOOD...WGGGGW...BOOBBKK.',
-  'WOOOOOOD..WGGGGGGW..DOOOBB..',
-  'DOOOOOD..WGGWWWWGGW.DOOOB...',
-  '.WOOOD..WGGWWWWWWGGWDOOD....',
-  '..WWOD..WGGWWWWWWGGWDOOD....',
-  '.WOOOD..WGGWWWWWWGGWDOOD....',
-  'WOOOOOD..WGGWWWWGGW.DOOD....',
-  '.DOOOOD...WGGGGGGW..DOOD....',
-  '..WOOOD....WGGGGW...DOOD....',
-  '...WWOD.....DOOD....DOO.....',
-  '............DOOD....DOO.....',
-  '............DOO......DO.....',
-  '............KK.......KK.....'
-];
-
-const FOX_FRAME_B = [
-  '.....WW................B..B.',
-  '....WOOOW.............BO.BB.',
-  '...WOOOOOW...........BOOBBBB',
-  '...DOOOOD....WWWW....BOEBKBB',
-  '..WOOOOOD...WGGGGW...BOOBBKK',
-  '.WOOOOOOD..WGGGGGGW..DOOOBB.',
-  '.DOOOOOD..WGGWWWWGGW.DOOOB..',
-  '..WOOOD..WGGWWWWWWGGWDOOD...',
-  '...WWOD..WGGWWWWWWGGWDOOD...',
-  '..WOOOD..WGGWWWWWWGGWDOOD...',
-  '.WOOOOOD..WGGWWWWGGW.DOOD...',
-  '..DOOOOD...WGGGGGGW..DOOD...',
-  '...WOOOD....WGGGGW...DOOD...',
-  '....WWOD...DOO..DOO...DOO...',
-  '..........DOO....DOO...DOO..',
-  '.........KK........KK...KK..'
-];
-
-function draw8BitChimericFox(cx, cy, scale, t, accentColor) {
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.imageSmoothingEnabled = false;
-
-  const frame = Math.floor(t * 3.5) % 2 === 0 ? FOX_FRAME_A : FOX_FRAME_B;
-  const pxSize = Math.max(5, Math.round((scale * zoom) / 14));
-  const spriteW = frame[0].length * pxSize;
-  const spriteH = frame.length * pxSize;
-  const bobY = Math.round(Math.sin(t * 7) * (pxSize * 0.8));
-  const startX = Math.round(cx - spriteW * 0.5);
-  const startY = Math.round(cy - spriteH * 0.45 + bobY);
-
-  // 8-Bit Golden & Persona Stardust Pixels
-  for (let p = 0; p < 18; p++) {
-    const pPhase = t * 2.2 + p * 0.7;
-    const sx = Math.round(startX - pxSize * 2 + ((p * 29 + Math.floor(t * 25)) % (spriteW + pxSize * 5)));
-    const sy = Math.round(startY + Math.sin(pPhase) * (spriteH * 0.45) + spriteH * 0.4);
-    ctx.globalAlpha = 0.45 + Math.sin(pPhase * 2) * 0.4;
-    ctx.fillStyle = p % 3 === 0 ? accentColor : '#fbbf24';
-    ctx.fillRect(sx, sy, pxSize * 0.7, pxSize * 0.7);
-  }
-
-  // Render Pixel Matrix
-  ctx.globalAlpha = 1;
-  for (let r = 0; r < frame.length; r++) {
-    const row = frame[r];
-    for (let c = 0; c < row.length; c++) {
-      const ch = row[c];
-      if (ch === '.') continue;
-      ctx.fillStyle = FOX_PALETTE[ch] || accentColor;
-      ctx.fillRect(startX + c * pxSize, startY + r * pxSize, pxSize, pxSize);
-    }
-  }
-  ctx.restore();
-}
-
 function drawHUDFrame(w, h, color, t, st) {
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
@@ -221,7 +134,131 @@ function drawHUDFrame(w, h, color, t, st) {
   ctx.fillText('RIG // ' + st.persona.toUpperCase() + '.' + st.form.toUpperCase(), w - pad - 145, h - pad - 10);
   ctx.restore();
 }
+const FOX_PALETTE = {
+  O: '#ea580c', // Vibrant Russet Fur
+  L: '#fb923c', // Light Fur Highlight
+  D: '#9a3412', // Deep Amber Fur Shadow
+  W: '#f8fafc', // Ivory Armor & White Fur Ruff
+  S: '#cbd5e1', // Armor Shading
+  G: '#fbbf24', // Gold Filigree Trim
+  B: '#1e1b24', // Obsidian Volcanic Split
+  V: '#3f3b4d', // Obsidian Edge Highlight
+  E: '#ef4444', // Glowing Ember Eye
+  K: '#090d16'  // Jet Black Nose / Stockings / Ear Tips
+};
 
+const FOX_BODY_A = [
+  '....................................KK....VV....',
+  '...................................KOOK..VBBV...',
+  '...................................KLLK.VBBBBV..',
+  '..................................KOOLLVBBBBBBV.',
+  '.................................KOOOWWBBBBBBBB.',
+  '.................................OOOWWWBBBEBBBBK',
+  '................................LOOOWWWBBBBBBBKK',
+  '..............GGGGGG............LOOOWWWVBBBBBB..',
+  '............GGWWWWWWGG.........LLOOOWWWWVBBBB...',
+  '..........GGWSSSSSSSSWGG......LLLOOOWWWWWVVV....',
+  '.........GWSSGGGGGGGGSSWG....LLLOOOOWWWWWWW.....',
+  '........GWSSGWWWWWWWWGSSWG..LLLOOOOWWWWWWWW.....',
+  '.......GWSSGWSSSSSSSSWGSSWGLLLOOOOWWWWWWWW......',
+  '.......GWSSGWSSSSSSSSWGSSWGLLOOOOWWWWWWWW.......',
+  '.......GWSSGWWWWWWWWWWGSSWGGOOOOWWWWWWWW........',
+  '........GWSSGGGGGGGGGGSSWGGGOOOWWWWWWWW.........',
+  '.........GGWSSSSSSSSSSWGG.GOOOWWWWWWWW..........',
+  '..........GGGGGGGGGGGGGG..GOOOWWW.DOOO..........',
+  '...........DOOO....DOOO...DOOO....DOOO..........',
+  '...........DOO......DOO...DOO......DOO..........',
+  '...........KK.......KK....DOO......DOO..........',
+  '..........................KK.......KK...........'
+];
+
+const FOX_BODY_B = [
+  '.....................................KK....VV...',
+  '....................................KOOK..VBBV..',
+  '....................................KLLK.VBBBBV.',
+  '...................................KOOLLVBBBBBBV',
+  '..................................KOOOWWBBBBBBBB',
+  '..................................OOOWWWBBBEBBBB',
+  '.................................LOOOWWWBBBBBBBK',
+  '...............GGGGGG............LOOOWWWVBBBBBB.',
+  '.............GGWWWWWWGG.........LLOOOWWWWVBBBB..',
+  '...........GGWSSSSSSSSWGG......LLLOOOWWWWWVVV...',
+  '..........GWSSGGGGGGGGSSWG....LLLOOOOWWWWWWW....',
+  '.........GWSSGWWWWWWWWGSSWG..LLLOOOOWWWWWWWW....',
+  '........GWSSGWSSSSSSSSWGSSWGLLLOOOOWWWWWWWW.....',
+  '........GWSSGWSSSSSSSSWGSSWGLLOOOOWWWWWWWW......',
+  '........GWSSGWWWWWWWWWWGSSWGGOOOOWWWWWWWW.......',
+  '.........GWSSGGGGGGGGGGSSWGGGOOOWWWWWWWW........',
+  '..........GGWSSSSSSSSSSWGG.GOOOWWWWWWWW.........',
+  '...........GGGGGGGGGGGGGG..GOOOWWW.DOOO.........',
+  '..........DOOO......DOOO...DOOO......DOOO.......',
+  '.........DOO..........DOO..DOO........DOO.......',
+  '........KK.............KK.KK...........KK.......'
+];
+
+function draw8BitChimericFox(cx, cy, scale, t, accentColor) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.imageSmoothingEnabled = false;
+
+  const frame = Math.floor(t * 4) % 2 === 0 ? FOX_BODY_A : FOX_BODY_B;
+  const pxSize = Math.max(4, Math.round((scale * zoom) / 18));
+  const cols = frame[0].length;
+  const rows = frame.length;
+  const spriteW = cols * pxSize;
+  const spriteH = rows * pxSize;
+  const bobY = Math.round(Math.sin(t * 8) * (pxSize * 0.7));
+  const startX = Math.round(cx - spriteW * 0.42);
+  const startY = Math.round(cy - spriteH * 0.48 + bobY);
+
+  // 9 Articulated Pixelated Tails (4 Russet/White + 5 Ivory/Gold Biomechanical)
+  const tailBaseX = startX + Math.round(cols * 0.18) * pxSize;
+  const tailBaseY = startY + Math.round(rows * 0.58) * pxSize;
+  for (let tailIdx = 0; tailIdx < 9; tailIdx++) {
+    const isMech = tailIdx >= 4;
+    const angleBase = -2.6 + (tailIdx / 8) * 1.65;
+    const sway = Math.sin(t * 4.5 + tailIdx * 0.75) * 0.16;
+    const angle = angleBase + sway;
+    const segments = 11;
+
+    for (let s = 1; s <= segments; s++) {
+      const dist = s * pxSize * 1.35;
+      const curve = Math.sin(s * 0.35 + t * 4 + tailIdx) * pxSize * 0.9;
+      const tx = Math.round((tailBaseX + Math.cos(angle) * dist - Math.sin(angle) * curve) / pxSize) * pxSize;
+      const ty = Math.round((tailBaseY + Math.sin(angle) * dist + Math.cos(angle) * curve) / pxSize) * pxSize;
+      const thickness = s < 3 ? 2 : s < 8 ? 3 : 2;
+
+      if (isMech) {
+        ctx.fillStyle = s === segments ? '#fbbf24' : (s % 2 === 0 ? '#f8fafc' : '#fbbf24');
+      } else {
+        ctx.fillStyle = s >= segments - 2 ? '#f8fafc' : (s % 2 === 0 ? '#ea580c' : '#9a3412');
+      }
+      ctx.fillRect(tx, ty, pxSize * thickness * 0.65, pxSize * thickness * 0.65);
+    }
+  }
+
+  // Render Body Matrix
+  for (let r = 0; r < rows; r++) {
+    const row = frame[r];
+    for (let c = 0; c < row.length; c++) {
+      const ch = row[c];
+      if (ch === '.') continue;
+      ctx.fillStyle = FOX_PALETTE[ch] || accentColor;
+      ctx.fillRect(startX + c * pxSize, startY + r * pxSize, pxSize, pxSize);
+    }
+  }
+
+  // Drifting 8-Bit Golden & Persona Stardust Pixels
+  for (let p = 0; p < 22; p++) {
+    const pPhase = t * 2.4 + p * 0.65;
+    const sx = Math.round(startX - pxSize * 8 + ((p * 37 + Math.floor(t * 28)) % (spriteW + pxSize * 10)));
+    const sy = Math.round(startY + Math.sin(pPhase) * (spriteH * 0.5) + spriteH * 0.45);
+    ctx.globalAlpha = 0.5 + Math.sin(pPhase * 2) * 0.4;
+    ctx.fillStyle = p % 3 === 0 ? accentColor : '#fbbf24';
+    ctx.fillRect(sx, sy, pxSize * 0.75, pxSize * 0.75);
+  }
+  ctx.restore();
+}
 const particles = Array.from({ length: 240 }, () => ({
   x: (Math.random() - 0.5) * 4.8, y: (Math.random() - 0.5) * 4.8, z: (Math.random() - 0.5) * 4.8, phase: Math.random() * Math.PI * 2
 }));
@@ -231,6 +268,7 @@ const PALETTES = {
   apothecary: '#10b981', advocate: '#a78bfa', architect: '#f43f5e', strategist: '#2dd4bf',
   pedagogue: '#60a5fa', scholar: '#fbbf24'
 };
+
 let t = 0;
 function render() {
   t += 0.025;
