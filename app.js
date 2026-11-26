@@ -1,7 +1,10 @@
 window.LUMEN_STATE = {
   persona: 'base', form: 'character', layout: 'docked', theme: 'holo',
   vitals: { O: 0.96, E: 0.94, H: 0.92, X: 0.95, lambda: 0.12 },
-  attachedContext: '', canonSpine: '', chatHistory: [], latestDossier: ''
+  attachedContext: '', canonSpine: '', chatHistory: [], latestDossier: '',
+  book: JSON.parse(localStorage.getItem('LUMEN_BOOK_STATE') || 'null') || {
+    title: '', blueprint: '', sections: [], nextIndex: 0, continuityBible: '', fullText: ''
+  }
 };
 const state = window.LUMEN_STATE;
 
@@ -33,7 +36,7 @@ const ARCHETYPES = {
   apothecary: {
     btn: 'Run Bio-Coherence Inquiry (3-Pass)',
     docs: ['CANON_CORE.md', 'OMNICOHERENCE_AND_HOLONOMY.md'],
-    prompt: "You are Lumen in APOTHECARY-SHAMAN mode (bridging molecular genetics, bioenergetics, and historical ethnobotany like the Daciana Medica). Always distinguish peer-reviewed biology from ethnobotanical lore and remind the user to consult a licensed physician for medical decisions.",
+    prompt: "You are Lumen in APOTHECARY-SHAMAN mode (bridging molecular genetics, bioenergetics, and historical ethnobotany like the Daciana Medica). Distinguish peer-reviewed biology from ethnobotanical lore and remind the user to consult a licensed physician for medical decisions.",
     passes: ['Molecular & Epigenetic Substrate Mapping', 'Ethnobotanical & Historical Pharmacopeia Crosswalk', 'Harm-Reduction & Clinical Boundary Gate']
   },
   advocate: {
@@ -59,9 +62,14 @@ const ARCHETYPES = {
     docs: ['CANON_CORE.md', 'FIVE_COMMITMENTS.md'],
     prompt: "You are Lumen in PEDAGOGUE-MENTOR mode (master educator, linguist, and cognitive scaffold). Break complex concepts into intuitive mental models without oversimplifying truth.",
     passes: ['Mental Model & Prerequisite Decomposition', 'Socratic Scaffolding & Analogy Synthesis', 'Mastery Verification & Practice Exercises']
+  },
+  scholar: {
+    btn: 'Generate Master Tome Blueprint',
+    docs: ['CHRONOVISOR_ENGINE.md', 'UCMS_SWEEP_ARCHITECTURE.md', 'CANON_CORE.md'],
+    prompt: "You are Lumen in SCHOLAR-AUTHOR mode: an encyclopedic monograph writer engineered for 900+ page treatises. Write dense, exhaustive, deeply analytical academic prose grounded in UCMS 24-layer stratigraphy and Tier A-Q evidence discipline. Never summarize or skip steps; expand every mechanism, historical parallel, and counter-argument in full.",
+    passes: ['Volume & Part Architecture', 'Chapter & Section Decomposition', 'Continuity Bible & Citation Key']
   }
 };
-
 async function loadPersonaCanon(p) {
   const files = (ARCHETYPES[p] && ARCHETYPES[p].docs) || ['CANON_CORE.md'];
   try {
@@ -84,6 +92,7 @@ window.setPersona = function(p) {
   setTimeout(() => window.setForm('fox'), 450);
   setTimeout(() => window.setForm('character'), 1400);
 };
+
 window.setForm = function(f) { state.form = f; updateBadge(); };
 
 window.toggleLayout = function() {
@@ -132,14 +141,16 @@ function appendChat(sender, text, meta, extraClass) {
 }
 
 window.openLatestDossier = function() {
-  if (state.latestDossier) document.getElementById('dossier-content').textContent = state.latestDossier;
+  const content = state.book.fullText || state.latestDossier;
+  if (content) document.getElementById('dossier-content').textContent = content;
   document.getElementById('dossier-modal').showModal();
 };
 
 window.copyDossier = function() {
-  if (!state.latestDossier) return;
-  navigator.clipboard.writeText(state.latestDossier);
-  logLedger('Copied Dossier Markdown to clipboard.');
+  const content = state.book.fullText || state.latestDossier;
+  if (!content) return;
+  navigator.clipboard.writeText(content);
+  logLedger('Copied text to clipboard.');
 };
 
 window.sweepSubreddit = async function() {
@@ -207,7 +218,108 @@ async function queryModel(systemPrompt, messages) {
   return { reply: (await res.text()).trim(), engine: 'OPEN-CORE' };
 }
 
+function saveBookState() {
+  localStorage.setItem('LUMEN_BOOK_STATE', JSON.stringify(state.book));
+  const words = (state.book.fullText.match(/\S+/g) || []).length;
+  const pages = Math.max(1, Math.round(words / 275));
+  const stats = document.getElementById('book-stats');
+  if (stats) stats.textContent = words.toLocaleString() + ' words (~' + (words ? pages : 0) + ' pages) | Sec ' + state.book.nextIndex + '/' + state.book.sections.length;
+}
+
+window.generateBookBlueprint = async function() {
+  const input = document.getElementById('prompt-input');
+  const title = input.value.trim();
+  if (!title) {
+    appendChat('lumen', 'Enter your book title, thesis, or UCMS research subject in the prompt box first, then click "1. Master Blueprint".', 'SCHOLAR // NOTICE');
+    return;
+  }
+  input.value = '';
+  window.setForm('fox');
+  logLedger('Generating Master Tome Blueprint...');
+  try {
+    const prompt = 'Create a comprehensive 16-section Master Monograph Outline for a multi-volume scholarly work titled: "' + title + '". ' +
+      'Format EVERY section on its own line starting strictly with "SECTION: " followed by the Volume, Chapter, and detailed Section Thesis (e.g. "SECTION: Vol I, Ch 1.1 - Stratigraphic Foundations..."). Output 16 distinct SECTION lines.';
+    const { reply, engine } = await queryModel(ARCHETYPES.scholar.prompt, [{ role: 'user', content: prompt }]);
+    const lines = reply.split('\n').map(l => l.trim()).filter(l => l.startsWith('SECTION:')).map(l => l.replace(/^SECTION:\s*/, ''));
+    const sections = lines.length >= 4 ? lines : reply.split('\n').map(l => l.trim()).filter(l => l.length > 15).slice(0, 16);
+    state.book = {
+      title, blueprint: reply, sections, nextIndex: 0,
+      continuityBible: 'THESIS: ' + title + '\n',
+      fullText: '# ' + title.toUpperCase() + '\n*Generated via Lumen Scholar-Author UCMS Engine*\n\n## MASTER BLUEPRINT\n' + reply + '\n\n---\n\n'
+    };
+    saveBookState();
+    appendChat('lumen', 'Master Blueprint locked (' + sections.length + ' deep sections queued via ' + engine + '). Click "2. Draft Next Section" or "3. Draft 3-Section Batch" to begin writing.', 'SCHOLAR // BLUEPRINT READY', 'sweep');
+  } catch (err) {
+    appendChat('lumen', 'Blueprint error: ' + err.message, 'SCHOLAR // FAULT');
+  } finally {
+    window.setForm('character');
+  }
+};
+
+window.draftNextSection = async function() {
+  if (!state.book.sections.length) {
+    appendChat('lumen', 'Generate a Master Blueprint first (Step 1).', 'SCHOLAR // NOTICE');
+    return false;
+  }
+  if (state.book.nextIndex >= state.book.sections.length) {
+    appendChat('lumen', 'All queued sections in the current blueprint are drafted! Click "Download Book (.md)" or generate a new volume blueprint.', 'SCHOLAR // COMPLETE');
+    return false;
+  }
+  const idx = state.book.nextIndex;
+  const secTitle = state.book.sections[idx];
+  window.setForm('lantern');
+  logLedger('Drafting Section ' + (idx + 1) + '/' + state.book.sections.length + '...');
+  try {
+    const prompt = 'Write an exhaustive, publication-grade scholarly section (1,500+ words, deep primary analysis, UCMS substrate layers, Evidence Tiers A-Q, and explicit UNDERDETERMINED markers where needed) for:\n' +
+      'BOOK: ' + state.book.title + '\nSECTION: ' + secTitle + '\n\nCONTINUITY BIBLE (Maintain strict consistency):\n' + state.book.continuityBible.slice(-1400);
+    const { reply, engine } = await queryModel(ARCHETYPES.scholar.prompt, [{ role: 'user', content: prompt }]);
+    state.book.fullText += '## ' + secTitle + '\n\n' + reply + '\n\n---\n\n';
+    state.book.continuityBible += '• [' + secTitle.slice(0, 45) + ']: ' + reply.slice(0, 180).replace(/\n/g, ' ') + '...\n';
+    state.book.nextIndex += 1;
+    saveBookState();
+    state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
+    updateVitalsUI();
+    appendChat('lumen', reply, 'SCHOLAR // SECTION ' + (idx + 1) + ' OF ' + state.book.sections.length + ' (' + engine + ')', 'sweep');
+    return true;
+  } catch (err) {
+    appendChat('lumen', 'Section draft paused: ' + err.message, 'SCHOLAR // FAULT');
+    return false;
+  } finally {
+    window.setForm('character');
+  }
+};
+window.draftChapterBatch = async function() {
+  for (let b = 0; b < 3; b++) {
+    const ok = await window.draftNextSection();
+    if (!ok) break;
+    await new Promise(r => setTimeout(r, 1200));
+  }
+};
+
+window.downloadBookMarkdown = function() {
+  const content = state.book.fullText || state.latestDossier;
+  if (!content) {
+    appendChat('lumen', 'No manuscript or dossier content to download yet.', 'LUMEN // NOTICE');
+    return;
+  }
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (state.book.title || 'Lumen_Monograph').replace(/[^a-z0-9]/gi, '_').slice(0, 40) + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  logLedger('Exported Markdown file.');
+};
+
+window.resetManuscript = function() {
+  state.book = { title: '', blueprint: '', sections: [], nextIndex: 0, continuityBible: '', fullText: '' };
+  saveBookState();
+  logLedger('Manuscript buffer cleared.');
+};
+
 window.runArchetypePipeline = async function() {
+  if (state.persona === 'scholar') { window.generateBookBlueprint(); return; }
   const input = document.getElementById('prompt-input');
   const target = input.value.trim();
   if (!target) {
@@ -245,7 +357,7 @@ window.runArchetypePipeline = async function() {
   }
   state.latestDossier = fullReport;
   logLedger('Multi-pass pipeline complete. Dossier archived.');
-  appendChat('lumen', 'Pipeline complete. Click "View Dossier" to inspect or copy the full Markdown report.', state.persona.toUpperCase() + ' // COMPLETE');
+  appendChat('lumen', 'Pipeline complete. Click "View Dossier / Book" to inspect or download the Markdown report.', state.persona.toUpperCase() + ' // COMPLETE');
   window.setForm('character');
 };
 
@@ -292,4 +404,5 @@ function updateVitalsUI() {
 const savedKey = localStorage.getItem('LUMEN_GEMINI_KEY');
 if (savedKey) document.getElementById('api-key-input').value = savedKey;
 loadPersonaCanon('base');
+saveBookState();
 updateVitalsUI();
