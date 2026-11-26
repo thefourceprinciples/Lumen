@@ -206,23 +206,109 @@ for (let k = -4; k <= 4; k++) {
   foxTails.push({ tailPivot, idx: k });
 }
 scene.add(foxGroup);
-// Holographic Character, Orb & Lantern Meshes
+// Holographic Character, Orb, Lantern & 9-Archetype Rigs
 const holoGroup = new THREE.Group();
 scene.add(holoGroup);
 
 const charMesh = new THREE.Group();
 const headSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 1), matHoloWire);
 headSphere.position.y = 1.05;
-const cloakCone = new THREE.Mesh(new THREE.ConeGeometry(0.68, 1.75, 12, 3, true), matHoloWire);
+const cloakCone = new THREE.Mesh(new THREE.ConeGeometry(0.68, 1.75, 16, 3, true), matHoloWire);
 cloakCone.position.y = -0.05;
 const heartCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 1), matHoloCore);
 heartCore.position.y = 0.35;
-const personaHalo = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.018, 8, 48), matHoloCore);
-personaHalo.position.y = 1.05;
-personaHalo.rotation.x = Math.PI * 0.35;
-charMesh.add(headSphere, cloakCone, heartCore, personaHalo);
-holoGroup.add(charMesh);
+charMesh.add(headSphere, cloakCone, heartCore);
 
+const personaRigs = {};
+function makeRig(name) { const g = new THREE.Group(); g.visible = false; charMesh.add(g); personaRigs[name] = g; return g; }
+
+// 0. Base Core
+const rigBase = makeRig('base');
+const baseHalo = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.016, 8, 48), matHoloCore);
+baseHalo.position.y = 1.05; baseHalo.rotation.x = Math.PI * 0.35;
+rigBase.add(baseHalo);
+
+// 1. Detective: Press Hat Brim + Floating Magnifying Lens
+const rigDet = makeRig('detective');
+const hatBrim = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.56, 32), matHoloWire);
+hatBrim.position.y = 1.22; hatBrim.rotation.set(Math.PI * 0.45, 0.15, -0.1);
+const lensRing = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.018, 8, 32), matHoloCore);
+lensRing.position.set(0.68, 0.45, 0.35);
+rigDet.add(hatBrim, lensRing);
+
+// 2. Lab Engineer: Counter-Rotating Gyroscopic Rings
+const rigEng = makeRig('engineer');
+const engRing1 = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.015, 8, 48), matHoloCore);
+const engRing2 = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.015, 8, 48), matHoloWire);
+engRing1.position.y = 1.05; engRing2.position.y = 1.05;
+rigEng.add(engRing1, engRing2);
+
+// 3. Oracle: 16-Ray Celestial Starburst Halo
+const rigOra = makeRig('oracle');
+for (let r = 0; r < 16; r++) {
+  const a = (r / 16) * Math.PI * 2;
+  const len = r % 2 === 0 ? 0.42 : 0.26;
+  const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, len, 6), matHoloCore);
+  ray.position.set(Math.cos(a) * (0.38 + len * 0.5), 1.05 + Math.sin(a) * (0.38 + len * 0.5), -0.1);
+  ray.rotation.z = a - Math.PI / 2;
+  rigOra.add(ray);
+}
+
+// 4. Apothecary-Shaman: Orbiting 3D DNA Double Helix
+const rigApo = makeRig('apothecary');
+for (let i = 0; i < 12; i++) {
+  const y = -0.65 + i * 0.15, a = i * 0.55;
+  const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.5, 6), matHoloWire);
+  rung.position.y = y; rung.rotation.set(0, a, Math.PI / 2);
+  const nodeA = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), matHoloCore);
+  nodeA.position.set(Math.cos(a) * 0.75, y, Math.sin(a) * 0.75);
+  const nodeB = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), matHoloCore);
+  nodeB.position.set(-Math.cos(a) * 0.75, y, -Math.sin(a) * 0.75);
+  rigApo.add(rung, nodeA, nodeB);
+}
+
+// 5. Advocate-Counsel: Balanced Harmonic Scales
+const rigAdv = makeRig('advocate');
+const scaleBeam = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.03, 0.03), matHoloCore);
+scaleBeam.position.y = 0.78;
+const panL = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.014, 8, 24), matHoloWire);
+panL.position.set(-0.82, 0.48, 0); panL.rotation.x = Math.PI / 2;
+const panR = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.014, 8, 24), matHoloWire);
+panR.position.set(0.82, 0.48, 0); panR.rotation.x = Math.PI / 2;
+rigAdv.add(scaleBeam, panL, panR);
+
+// 6. Architect-Artisan: Rotating Golden-Ratio Pentagons
+const rigArc = makeRig('architect');
+const pent1 = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.016, 6, 5), matHoloCore);
+const pent2 = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.016, 6, 5), matHoloWire);
+pent1.position.y = 0.3; pent2.position.y = 0.3;
+rigArc.add(pent1, pent2);
+
+// 7. Strategist-Economist: 3D Tactical Grid
+const rigStr = makeRig('strategist');
+const gridHelper = new THREE.GridHelper(2.2, 8, 0x2dd4bf, 0x2dd4bf);
+gridHelper.position.y = -0.95;
+rigStr.add(gridHelper);
+
+// 8. Pedagogue-Mentor: Twin Concentric Resonance Shells
+const rigPed = makeRig('pedagogue');
+const shell1 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 1), matHoloWire);
+const shell2 = new THREE.Mesh(new THREE.IcosahedronGeometry(1.02, 1), matHoloWire);
+shell1.position.y = 0.3; shell2.position.y = 0.3;
+rigPed.add(shell1, shell2);
+
+// 9. Scholar-Author: Nested Astrolabe Rings & Floating Codex
+const rigSch = makeRig('scholar');
+const astro1 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.016, 8, 48), matHoloCore);
+const astro2 = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.014, 8, 48), matHoloWire);
+astro1.position.y = 0.45; astro2.position.y = 0.45;
+const codexL = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.02, 0.52), matHoloCore);
+codexL.position.set(-0.2, 0.25, 0.55); codexL.rotation.set(0.35, 0, -0.2);
+const codexR = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.02, 0.52), matHoloCore);
+codexR.position.set(0.2, 0.25, 0.55); codexR.rotation.set(0.35, 0, 0.2);
+rigSch.add(astro1, astro2, codexL, codexR);
+
+holoGroup.add(charMesh);
 const orbMesh = new THREE.Group();
 for (let i = 0; i < 3; i++) {
   const gyro = new THREE.Mesh(new THREE.TorusGeometry(0.65 + i * 0.22, 0.015, 8, 48), matHoloCore);
@@ -239,7 +325,6 @@ const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), matHoloCore)
 lanternMesh.add(cage, flame);
 holoGroup.add(lanternMesh);
 
-// 3D Stardust Particle Field
 const starCount = 260;
 const starGeo = new THREE.BufferGeometry();
 const starPos = new Float32Array(starCount * 3);
@@ -263,8 +348,8 @@ function animate() {
   rimLight.color.setHex(hex);
   ring1.material.color.setHex(hex);
   ring2.material.color.setHex(hex);
+  starMat.color.setHex(hex);
 
-  // Camera Orbit Position
   camera.position.x = Math.sin(camYaw) * Math.cos(camPitch) * camDist;
   camera.position.y = Math.sin(camPitch) * camDist + 0.25;
   camera.position.z = Math.cos(camYaw) * Math.cos(camPitch) * camDist;
@@ -272,7 +357,6 @@ function animate() {
 
   starField.rotation.y = t * 0.08;
 
-  // Toggle Form Visibility & Animate
   foxGroup.visible = (st.form === 'fox');
   charMesh.visible = (st.form === 'character');
   orbMesh.visible = (st.form === 'orb');
@@ -304,8 +388,18 @@ function animate() {
     flame.scale.setScalar(0.9 + Math.sin(t * 7) * 0.15);
   } else {
     charMesh.position.y = Math.sin(t * 1.8) * 0.08;
-    personaHalo.rotation.z = t * 0.5;
     heartCore.rotation.y = t * 1.5;
+
+    Object.keys(personaRigs).forEach(k => { personaRigs[k].visible = (k === st.persona); });
+    if (st.persona === 'base') baseHalo.rotation.z = t * 0.5;
+    if (st.persona === 'detective') lensRing.rotation.y = Math.sin(t * 1.5) * 0.5;
+    if (st.persona === 'engineer') { engRing1.rotation.set(t * 0.8, t * 0.4, 0); engRing2.rotation.set(-t * 0.6, 0, t * 0.5); }
+    if (st.persona === 'oracle') rigOra.rotation.z = t * 0.25;
+    if (st.persona === 'apothecary') rigApo.rotation.y = t * 0.9;
+    if (st.persona === 'advocate') rigAdv.rotation.z = Math.sin(t * 1.4) * 0.08;
+    if (st.persona === 'architect') { pent1.rotation.set(t * 0.5, t * 0.3, 0); pent2.rotation.set(-t * 0.4, 0, t * 0.4); }
+    if (st.persona === 'pedagogue') { shell1.rotation.y = t * 0.4; shell2.rotation.y = -t * 0.25; }
+    if (st.persona === 'scholar') { astro1.rotation.set(t * 0.4, 0.35, 0); astro2.rotation.set(-t * 0.3, -0.35, 0); }
   }
 
   renderer.render(scene, camera);
