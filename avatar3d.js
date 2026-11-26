@@ -69,7 +69,7 @@ const particles = Array.from({ length: 240 }, () => ({
 
 const PALETTES = {
   base: '#38bdf8', detective: '#f59e0b', engineer: '#22d3ee', oracle: '#fde047',
-  apothecary: '#10b981', advocate: '#a78bfa', architect: '#f43f5e', strategist: '#2dd4bf', pedagogue: '#60a5fa'
+  apothecary: '#10b981', advocate: '#a78bfa', architect: '#f43f5e', strategist: '#2dd4bf', pedagogue: '#60a5fa' scholar: '#fbbf24'
 };
 
 let t = 0;
@@ -165,7 +165,13 @@ function render() {
       drawRing3D(0.75, 0.3 + bob, 0.2, 0, 32, cx, cy, scale, 0.85);
       drawRing3D(1.05, 0.3 + bob, -0.2, 0, 32, cx, cy, scale, 0.65);
     }
-  }
+    } else if (st.persona === 'scholar') {
+  drawRing3D(0.95, 0.45 + bob, t * 0.4, 0.35, 36, cx, cy, scale, 0.9);
+  drawRing3D(1.15, 0.45 + bob, -t * 0.3, -0.35, 36, cx, cy, scale, 0.75);
+  drawLine3D([-0.55, 0.25 + bob, 0.45], [-0.1, 0.2 + bob, 0.55], cx, cy, scale, 0.9, 1.8);
+  drawLine3D([0.1, 0.2 + bob, 0.55], [0.55, 0.25 + bob, 0.45], cx, cy, scale, 0.9, 1.8);
+    }
+ }
   ctx.globalCompositeOperation = 'source-over';
   requestAnimationFrame(render);
 }
