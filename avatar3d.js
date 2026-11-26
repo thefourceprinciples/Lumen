@@ -18,7 +18,7 @@ const keyLight = new THREE.DirectionalLight(0xfffbeb, 2.2);
 keyLight.position.set(3, 5, 4);
 scene.add(keyLight);
 
-const rimLight = new THREE.PointLight(0x38bdf8, 2.5, 12);
+const rimLight = new THREE.PointLight(0x34d399, 2.5, 12);
 rimLight.position.set(-3, 2, -2);
 scene.add(rimLight);
 
@@ -56,19 +56,19 @@ const matCharcoal = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness:
 const matWhiteFur = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75, metalness: 0.0 });
 const matAmberEye = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 2.2 });
 const matRedEye   = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.8 });
-const matHoloWire = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.75 });
-const matHoloCore = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 1.8, roughness: 0.2 });
+const matHoloWire = new THREE.MeshBasicMaterial({ color: 0x34d399, wireframe: true, transparent: true, opacity: 0.75 });
+const matHoloCore = new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x34d399, emissiveIntensity: 1.8, roughness: 0.2 });
 
 const PALETTES = {
-  base: 0x38bdf8, detective: 0xf59e0b, engineer: 0x22d3ee, oracle: 0xfde047,
+  base: 0x34d399, detective: 0xf59e0b, engineer: 0x22d3ee, oracle: 0xfde047,
   apothecary: 0x10b981, advocate: 0xa78bfa, architect: 0xf43f5e, strategist: 0x2dd4bf,
   pedagogue: 0x60a5fa, scholar: 0xfbbf24
 };
 
 const baseGroup = new THREE.Group();
-const ring1 = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.30, 64), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }));
+const ring1 = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.30, 64), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }));
 ring1.rotation.x = -Math.PI / 2; ring1.position.y = -1.15;
-const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.88, 48), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
+const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.88, 48), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
 ring2.rotation.x = -Math.PI / 2; ring2.position.y = -1.15;
 baseGroup.add(ring1, ring2);
 scene.add(baseGroup);
@@ -307,12 +307,32 @@ const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), matHoloCore)
 lanternMesh.add(cage, flame);
 holoGroup.add(lanternMesh);
 
+const fireflyCanvas = document.createElement('canvas');
+fireflyCanvas.width = 64;
+fireflyCanvas.height = 64;
+const fCtx = fireflyCanvas.getContext('2d');
+const fGrad = fCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+fGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+fGrad.addColorStop(0.35, 'rgba(255, 250, 210, 0.75)');
+fGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+fCtx.fillStyle = fGrad;
+fCtx.fillRect(0, 0, 64, 64);
+const fireflyTexture = new THREE.CanvasTexture(fireflyCanvas);
+
 const starCount = 260;
 const starGeo = new THREE.BufferGeometry();
 const starPos = new Float32Array(starCount * 3);
 for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 7.5;
 starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-const starMat = new THREE.PointsMaterial({ color: 0xfbbf24, size: 0.045, transparent: true, opacity: 0.8 });
+const starMat = new THREE.PointsMaterial({
+  color: 0xfbbf24,
+  size: 0.14,
+  map: fireflyTexture,
+  transparent: true,
+  opacity: 0.85,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending
+});
 const starField = new THREE.Points(starGeo, starMat);
 scene.add(starField);
 
@@ -322,15 +342,15 @@ function animate() {
   t += 0.025;
   if (!isDragging) camYaw += 0.004;
 
-  const st = window.LUMEN_STATE || { persona: 'base', form: 'character', layout: 'docked' };
-  const hex = PALETTES[st.persona] || 0x38bdf8;
+  const st = window.LUMEN_STATE || { persona: 'base', form: 'character', layout: 'docked', porchMode: false };
+  const hex = st.porchMode ? 0xfbbf24 : (PALETTES[st.persona] || 0x34d399);
   matHoloWire.color.setHex(hex);
   matHoloCore.color.setHex(hex);
   matHoloCore.emissive.setHex(hex);
   rimLight.color.setHex(hex);
   ring1.material.color.setHex(hex);
   ring2.material.color.setHex(hex);
-  starMat.color.setHex(hex);
+  starMat.color.setHex(st.porchMode ? 0xf59e0b : hex);
 
   const isRoam = (st.layout === 'roam');
   const roamX = isRoam ? Math.cos(t * 0.45) * 1.15 : 0;
