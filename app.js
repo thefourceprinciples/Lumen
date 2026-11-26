@@ -131,8 +131,21 @@ function logLedger(entry) {
   box.scrollTop = box.scrollHeight;
 }
 
+function escapeHTML(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .split(String.fromCharCode(39)).join('&#39;');
+}
+
 function formatLumenMarkdown(raw) {
-  const esc = String(raw).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  const protectedStr = String(raw)
+    .replace(/\\\|/g, '@@PIPE@@')
+    .replace(/\$([^$]+)\$/g, (_, m) => '$' + m.replace(/\|/g, '@@PIPE@@') + '$')
+    .replace(/\\\((.+?)\\\)/g, (_, m) => '\\(' + m.replace(/\|/g, '@@PIPE@@') + '\\)');
+  const esc = escapeHTML(protectedStr);
   const lines = esc.split('\n');
   let out = [], inTable = false, tableRows = [];
 
@@ -166,6 +179,8 @@ function formatLumenMarkdown(raw) {
   if (inTable) flushTable();
 
   return out.join('\n')
+    .replace(/@@PIPE@@/g, '|')
+    .replace(/&lt;br\s*\/?&gt;/gi, '<br/>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>');
 }
@@ -174,7 +189,7 @@ function appendChat(sender, text, meta, extraClass) {
   const log = document.getElementById('chat-log');
   const div = document.createElement('div');
   div.className = 'msg ' + sender + (extraClass ? ' ' + extraClass : '');
-  const formatted = sender === 'lumen' ? formatLumenMarkdown(text) : String(text).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  const formatted = sender === 'lumen' ? formatLumenMarkdown(text) : escapeHTML(text);
   div.innerHTML = '<div class="msg-meta">' + meta + '</div>' + formatted;
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
