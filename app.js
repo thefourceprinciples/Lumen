@@ -117,6 +117,7 @@ function updateBadge() {
 
 window.saveApiKey = function() {
   const val = document.getElementById('api-key-input').value.replace(/['"\s]/g, '');
+  localStorage.removeItem('LUMEN_GROQ_MODEL');
   if (val) localStorage.setItem('LUMEN_GEMINI_KEY', val);
   else localStorage.removeItem('LUMEN_GEMINI_KEY');
   document.getElementById('settings-modal').close();
@@ -229,6 +230,23 @@ async function queryModel(systemPrompt, messages) {
 
   if (apiKey.startsWith('gsk_')) {
     const groqBase = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1'].join('');
+    const cachedModel = localStorage.getItem('LUMEN_GROQ_MODEL');
+    if (cachedModel) {
+      try {
+        const res = await fetch(groqBase + '/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: cachedModel, max_tokens: 4096, messages: [{ role: 'system', content: systemPrompt }, ...messages] })
+        });
+        const data = await res.json();
+        const reply = data?.choices?.at(0)?.message?.content;
+        if (res.ok && reply) return { reply, engine: 'GROQ (' + cachedModel + ')' };
+        localStorage.removeItem('LUMEN_GROQ_MODEL');
+      } catch (_) {
+        localStorage.removeItem('LUMEN_GROQ_MODEL');
+      }
+    }
+
     try {
       const mRes = await fetch(groqBase + '/models', { headers: { 'Authorization': 'Bearer ' + apiKey } });
       const mData = await mRes.json();
@@ -245,7 +263,10 @@ async function queryModel(systemPrompt, messages) {
         });
         const data = await res.json();
         const reply = data?.choices?.at(0)?.message?.content;
-        if (res.ok && reply) return { reply, engine: 'GROQ (' + gModel + ')' };
+        if (res.ok && reply) {
+          localStorage.setItem('LUMEN_GROQ_MODEL', gModel);
+          return { reply, engine: 'GROQ (' + gModel + ')' };
+        }
         providerDiag += gModel + ' (' + res.status + '): ' + (data?.error?.message || res.statusText) + ' | ';
       }
       if (!ranked.length) providerDiag += 'No active chat models returned by Groq (' + mRes.status + ') | ';
