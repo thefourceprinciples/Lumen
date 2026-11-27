@@ -56,7 +56,6 @@ const PALETTES = {
   apothecary: 0x10b981, advocate: 0xc084fc, architect: 0xfb7185, strategist: 0x2dd4bf,
   pedagogue: 0x60a5fa, scholar: 0xfbbf24
 };
-
 const baseGroup = new THREE.Group();
 const ring1 = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.30, 64), new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }));
 ring1.rotation.x = -Math.PI / 2; ring1.position.y = -1.15;
@@ -64,6 +63,7 @@ const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.88, 48), new THREE.M
 ring2.rotation.x = -Math.PI / 2; ring2.position.y = -1.15;
 baseGroup.add(ring1, ring2);
 scene.add(baseGroup);
+
 const holoGroup = new THREE.Group();
 scene.add(holoGroup);
 
@@ -106,7 +106,6 @@ for (let r = 0; r < 16; r++) {
   ray.rotation.z = a - Math.PI / 2;
   rigOra.add(ray);
 }
-
 const rigApo = makeRig('apothecary');
 for (let i = 0; i < 12; i++) {
   const y = -0.65 + i * 0.15, a = i * 0.55;
@@ -199,8 +198,8 @@ scene.add(starField);
 let t = 0;
 function animate() {
   requestAnimationFrame(animate);
-  t += 0.045;
-  if (!isDragging) camYaw += 0.007;
+  t += 0.10;
+  if (!isDragging) camYaw += 0.014;
 
   const st = window.LUMEN_STATE || { persona: 'base', form: 'character', layout: 'docked', porchMode: false };
   const hex = PALETTES[st.persona] || 0x34d399;
