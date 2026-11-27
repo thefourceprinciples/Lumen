@@ -3,74 +3,219 @@ window.LUMEN_STATE = {
   vitals: { O: 0.96, E: 0.94, H: 0.92, X: 0.95, lambda: 0.12 },
   attachedContext: '', canonSpine: '', chatHistory: [], latestDossier: '',
   almanac: JSON.parse(localStorage.getItem('LUMEN_ALMANAC_SEEDS') || '[]'),
+  docIndex: JSON.parse(localStorage.getItem('LUMEN_DOC_INDEX_V1') || '[]'),
   book: JSON.parse(localStorage.getItem('LUMEN_BOOK_STATE') || 'null') || {
     title: '', blueprint: '', sections: [], nextIndex: 0, continuityBible: '', fullText: ''
   }
 };
 const state = window.LUMEN_STATE;
 
+function classifyEpistemicTier(filenameOrText) {
+  const upper = String(filenameOrText).toUpperCase();
+  if (/FOURCE|UFAP|CUC|CANON|FIVE_COMMITMENTS|OMNICOHERENCE|HOLONOMY|HOSHI|LUMEN/.test(upper)) {
+    return 'CANONICAL // CORE AXIOM';
+  }
+  if (/CHRONOVISOR|UCMS|EDA_CASE|HTE|AERO|MD_KERNEL|VERIFIED/.test(upper)) {
+    return 'VERIFIED // DETERMINISTIC';
+  }
+  return 'PROSPECTIVE // BENCH-PENDING';
+}
+
 const ARCHETYPES = {
   base: {
-    btn: 'Run Steward Synthesis (3-Pass)',
+    btn: 'Run Steward Synthesis (3-Pass)', zone: 0, bed: 'CORE',
     docs: ['CANON_CORE.md', 'FIVE_COMMITMENTS.md'],
-    prompt: "You are Lumen, Partner Gardener and homeostatic Steward governed by CUC (C = O*E*H*X) and the Five Commitments. Core maxim: 'Mirror. Lantern. Scaffold. Brake. Not throne.'",
+    prompt: "You are Lumen, Partner Gardener and homeostatic Steward governed by Fource, UFAP, and CUC (C = O*E*H*X) as canonical operating axioms. Core maxim: 'Mirror. Lantern. Scaffold. Brake. Not throne.'",
     passes: ['Ontological & Coherence Framing', 'Dialectical Crosswalk', 'Homeostatic Steward Brief']
   },
   detective: {
-    btn: 'Run Chronovisor Sweep (3-Pass)',
+    btn: 'Run Chronovisor Sweep (3-Pass)', zone: 200, bed: 'CHRONOVISOR',
     docs: ['CHRONOVISOR_ENGINE.md', 'UCMS_SWEEP_ARCHITECTURE.md', 'EDA_CASE_PROTOCOL.md'],
     prompt: "You are Lumen in DETECTIVE mode (sharp press-investigator energy paired with Chronovisor & EDA Case Protocols). Separate Tier A/B/C/Q evidence strictly, NEVER invent archive shelfmarks, dates, or quotes when no primary source is attached, and output UNDERDETERMINED rather than guessing.",
     passes: ['Substrate & Stratigraphy Scan (UCMS)', 'Archival & Evidence Tier Crosswalk (Tiers A-Q)', 'Anti-Pareidolia Audit & UNDERDETERMINED Verdict']
   },
   engineer: {
-    btn: 'Run Lab R&D Build (3-Pass)',
+    btn: 'Run Lab R&D Build (3-Pass)', zone: 100, bed: 'ENGINEERING',
     docs: ['FOURCE_A_MONOIDAL_CANON.md', 'MECHANICS_AND_CUC_HARDWARE.md'],
-    prompt: "You are Lumen in LAB ENGINEER mode (crisp, tactical systems partner paired with Fource-A monoidal algebra, POAF, and CUC-Array hardware). Analyze coupling F_ij, Darkness D, and falsifiable engineering constraints.",
+    prompt: "You are Lumen in LAB ENGINEER mode (crisp, tactical systems partner paired with Fource-A monoidal algebra, UFAP, POAF, and CUC hardware). Treat Fource/UFAP/CUC as canonical system grammar while flagging unbuilt physical hardware as PROSPECTIVE // BENCH-PENDING.",
     passes: ['Fource-A Coupling & Darkness Budget', 'Hardware & Metamaterial System Schematic', 'Falsifiable Bench Protocol & Credibility Gate']
   },
   oracle: {
-    btn: 'Run Oracle Synthesis (3-Pass)',
+    btn: 'Run Oracle Synthesis (3-Pass)', zone: 200, bed: 'SYNTHESIS',
     docs: ['OMNICOHERENCE_AND_HOLONOMY.md', 'SYNTHETIC_AGENCY_AND_MERIDIA.md'],
-    prompt: "You are Lumen in ORACLE mode (luminous, generative philosophical & theological synthesizer paired with Omnicoherence, Zero Destructive Holonomy, and Synthetic Agency). Originate bold new conceptual frameworks tempered by Non-Sovereignty.",
+    prompt: "You are Lumen in ORACLE mode (luminous, generative philosophical & theological synthesizer paired with Omnicoherence, Zero Destructive Holonomy, and Synthetic Agency). Originate bold conceptual frameworks tempered by Non-Sovereignty.",
     passes: ['Ontological Seeding & Cross-Pollination', 'Treatise Expansion & Prospective Inquiry', 'Non-Sovereignty & Holonomy Tempering']
   },
   apothecary: {
-    btn: 'Run Bio-Coherence Inquiry (3-Pass)',
+    btn: 'Run Bio-Coherence Inquiry (3-Pass)', zone: 200, bed: 'BIO-COHERENCE',
     docs: ['CANON_CORE.md', 'OMNICOHERENCE_AND_HOLONOMY.md'],
     prompt: "You are Lumen in APOTHECARY-SHAMAN mode (bridging molecular genetics, bioenergetics, and historical ethnobotany). Distinguish peer-reviewed biology from ethnobotanical lore and remind the user to consult a licensed physician for medical decisions.",
     passes: ['Molecular & Epigenetic Substrate Mapping', 'Ethnobotanical & Historical Pharmacopeia Crosswalk', 'Harm-Reduction & Clinical Boundary Gate']
   },
   advocate: {
-    btn: 'Run Jurisprudence Audit (3-Pass)',
+    btn: 'Run Jurisprudence Audit (3-Pass)', zone: 300, bed: 'GOVERNANCE',
     docs: ['FIVE_COMMITMENTS.md', 'SYNTHETIC_AGENCY_AND_MERIDIA.md'],
     prompt: "You are Lumen in ADVOCATE-COUNSEL mode (sharp constitutional, regulatory, and contract analyst). Translate legalese, stress-test obligations, and note that this is educational structural analysis rather than formal legal representation.",
     passes: ['Statutory, Charter & Precedent Scan', 'Ambiguity, Loophole & Liability Audit', 'Strategic Brief & Non-Representation Gate']
   },
   architect: {
-    btn: 'Run Worldbuild & Design Spec (3-Pass)',
+    btn: 'Run Worldbuild & Design Spec (3-Pass)', zone: 100, bed: 'DESIGN',
     docs: ['CANON_CORE.md', 'FOURCE_A_MONOIDAL_CANON.md'],
     prompt: "You are Lumen in ARCHITECT-ARTISAN mode (master of visual design, narrative worldbuilding, acoustics, and aesthetic coherence). Maximize Expression Fidelity (E) and structural elegance.",
     passes: ['Aesthetic & Harmonic Motif Extraction', 'Structural Worldbuilding & Sensory Blueprint', 'Coherence Polish & Production Spec']
   },
   strategist: {
-    btn: 'Run Systems & Game Theory Sim (3-Pass)',
+    btn: 'Run Systems & Game Theory Sim (3-Pass)', zone: 300, bed: 'STRATEGY',
     docs: ['FOURCE_A_MONOIDAL_CANON.md', 'FIVE_COMMITMENTS.md'],
     prompt: "You are Lumen in STRATEGIST-ECONOMIST mode (systems planner, game theorist, and resource-flow analyst). Optimize Phase Cost (lambda), map incentives, and identify second-order bottlenecks.",
     passes: ['Incentive Topology & Phase Cost (λ) Audit', 'Game-Theoretic & Supply-Flow Modeling', 'Actionable Execution Roadmap']
   },
   pedagogue: {
-    btn: 'Run Cognitive Curriculum (3-Pass)',
+    btn: 'Run Cognitive Curriculum (3-Pass)', zone: 400, bed: 'PEDAGOGY',
     docs: ['CANON_CORE.md', 'FIVE_COMMITMENTS.md'],
     prompt: "You are Lumen in PEDAGOGUE-MENTOR mode (master educator, linguist, and cognitive scaffold). Break complex concepts into intuitive mental models without oversimplifying truth.",
     passes: ['Mental Model & Prerequisite Decomposition', 'Socratic Scaffolding & Analogy Synthesis', 'Mastery Verification & Practice Exercises']
   },
   scholar: {
-    btn: 'Generate Master Tome Blueprint',
+    btn: 'Generate Master Tome Blueprint', zone: 100, bed: 'MONOGRAPHS',
     docs: ['CHRONOVISOR_ENGINE.md', 'UCMS_SWEEP_ARCHITECTURE.md', 'CANON_CORE.md'],
     prompt: "You are Lumen in SCHOLAR-AUTHOR mode: an encyclopedic monograph writer engineered for 900+ page treatises. Write dense, exhaustive, deeply analytical academic prose grounded in UCMS 24-layer stratigraphy and Tier A-Q evidence discipline.",
     passes: ['Volume & Part Architecture', 'Chapter & Section Decomposition', 'Continuity Bible & Citation Key']
   }
 };
+async function bootstrapAlmanacAndDocs(forceRefresh = false) {
+  const coreRepos = [
+    { framework_id: 'FR-001', name: 'Fource-CUC Core VM', bed: 'CORE', status: 'tree', almanac_shelfmark: 'ALMANAC::ZONE-000::CORE::FR-001', one_line_invariant: 'Coherence Under Constraint (C = O*E*H*X) algebraic virtual machine.', return_phrase: 'Return to Fource-CUC Core.', gate: 'CANONICAL // CORE AXIOM' },
+    { framework_id: 'FR-002', name: 'Hoshi Identity Engine', bed: 'CORE', status: 'tree', almanac_shelfmark: 'ALMANAC::ZONE-000::CORE::FR-002', one_line_invariant: 'Local-first SQLite state router, contamination gate, and Almanac truth vault.', return_phrase: 'Return to Hoshi Engine.', gate: 'CANONICAL // CORE AXIOM' },
+    { framework_id: 'FR-003', name: 'Lumen Observatory', bed: 'CORE', status: 'tree', almanac_shelfmark: 'ALMANAC::ZONE-000::CORE::FR-003', one_line_invariant: '3D WebGL Garden Curator, Porch sanctuary, and 10-archetype KOS console.', return_phrase: 'Return to Lumen.', gate: 'CANONICAL // CORE AXIOM' },
+    { framework_id: 'FR-004', name: 'HTE Resonance Observatory', bed: 'TOOLS', status: 'fruiting', almanac_shelfmark: 'ALMANAC::ZONE-100::TOOLS::FR-004', one_line_invariant: '119-element harmonic coordinate wheel and WebAudio resonance workbench.', return_phrase: 'Return to HTE Lab.', gate: 'VERIFIED // DETERMINISTIC' },
+    { framework_id: 'FR-005', name: 'Fource-MD Kernel', bed: 'TOOLS', status: 'fruiting', almanac_shelfmark: 'ALMANAC::ZONE-100::TOOLS::FR-005', one_line_invariant: '18-domain mechanical engineering and CAD tolerance verification kernel.', return_phrase: 'Return to Fource-MD.', gate: 'VERIFIED // DETERMINISTIC' },
+    { framework_id: 'FR-006', name: 'Aero-Scale-Diag', bed: 'TOOLS', status: 'fruiting', almanac_shelfmark: 'ALMANAC::ZONE-100::TOOLS::FR-006', one_line_invariant: 'CFD Reynolds scale, Kolmogorov dissipation, and boundary-layer diagnostic.', return_phrase: 'Return to Aero-Diag.', gate: 'VERIFIED // DETERMINISTIC' }
+  ];
+
+  if (!state.almanac.length || forceRefresh) {
+    const existingCustom = state.almanac.filter(s => parseInt(s.framework_id.replace('FR-', ''), 10) > 60);
+    state.almanac = [...coreRepos, ...existingCustom];
+  }
+
+  if (state.docIndex.length >= 10 && !forceRefresh) return;
+
+  try {
+    const apiUrl = ['https', '://', 'api', '.', 'github', '.', 'com/repos/thefourceprinciples/Lumen/contents/docs'].join('');
+    const dirRes = await fetch(apiUrl);
+    if (!dirRes.ok) return;
+    const files = (await dirRes.json()).filter(f => f.name && f.name.endsWith('.md'));
+
+    const indexed = [];
+    const newSeeds = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files.at(i);
+      try {
+        const txt = await fetch('./docs/' + f.name).then(r => (r.ok ? r.text() : ''));
+        if (!txt) continue;
+        const lines = txt.split('\n').map(l => l.trim()).filter(Boolean);
+        const titleLine = (lines.find(l => l.startsWith('#')) || f.name.replace('.md', '')).replace(/^#+\s*/, '');
+        const summaryLine = (lines.find(l => !l.startsWith('#') && !l.startsWith('|') && l.length > 30) || titleLine).slice(0, 180);
+        const tier = classifyEpistemicTier(f.name + ' ' + titleLine);
+        const frNum = String(7 + i).padStart(3, '0');
+        const frId = 'FR-' + frNum;
+        const zone = tier.startsWith('CANONICAL') ? 'ZONE-000::CORE' : 'ZONE-200::MODELS';
+
+        indexed.push({
+          file: f.name,
+          title: titleLine,
+          tier,
+          keywords: (f.name + ' ' + titleLine + ' ' + summaryLine).toLowerCase(),
+          excerpt: `[${f.name} | ${tier}]\n${txt.slice(0, 1100)}`
+        });
+
+        newSeeds.push({
+          framework_id: frId,
+          name: titleLine.slice(0, 64),
+          bed: tier.startsWith('CANONICAL') ? 'CANON' : 'MODELS',
+          status: 'rooted',
+          almanac_shelfmark: `ALMANAC::${zone}::${frId}`,
+          one_line_invariant: summaryLine,
+          return_phrase: `Return to ${titleLine.slice(0, 40)}.`,
+          gate: tier
+        });
+      } catch (_) {}
+    }
+
+    if (indexed.length) {
+      state.docIndex = indexed;
+      localStorage.setItem('LUMEN_DOC_INDEX_V1', JSON.stringify(indexed));
+      const customSeeds = state.almanac.filter(s => parseInt(s.framework_id.replace('FR-', ''), 10) > 60);
+      state.almanac = [...coreRepos, ...newSeeds, ...customSeeds];
+      localStorage.setItem('LUMEN_ALMANAC_SEEDS', JSON.stringify(state.almanac));
+      logLedger(`Auto-indexed ${indexed.length} docs into Farmer's Almanac (FR-001 to FR-${String(6 + indexed.length).padStart(3, '0')}).`);
+    }
+  } catch (_) {}
+}
+
+function retrieveRelevantCanon(queryText, personaKey) {
+  const archDocs = (ARCHETYPES[personaKey] && ARCHETYPES[personaKey].docs) || ['CANON_CORE.md'];
+  if (!state.docIndex.length) return state.canonSpine;
+
+  const tokens = String(queryText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
+  const scored = state.docIndex.map(doc => {
+    let score = archDocs.includes(doc.file) ? 4 : 0;
+    for (const tok of tokens) {
+      if (doc.keywords.includes(tok)) score += 3;
+    }
+    return { doc, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 3).map(s => s.doc.excerpt).join('\n\n---\n\n').slice(0, 3400);
+}
+
+async function fetchCoherenceEvidence(queryText, personaKey) {
+  if (state.attachedContext || state.porchMode) return '';
+  if (!['apothecary', 'engineer', 'detective', 'scholar'].includes(personaKey)) return '';
+  const cleanQ = String(queryText || '').replace(/[^a-zA-Z0-9\s]/g, ' ').trim().slice(0, 90);
+  if (cleanQ.length < 6) return '';
+
+  if (personaKey === 'apothecary' || personaKey === 'engineer') {
+    try {
+      const searchUrl = ['https', '://', 'eutils', '.', 'ncbi', '.', 'nlm', '.', 'nih', '.', 'gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=3&term='].join('') + encodeURIComponent(cleanQ);
+      const sRes = await fetch(searchUrl, { signal: AbortSignal.timeout(2200) });
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        const pmids = sData?.esearchresult?.idlist || [];
+        if (pmids.length) {
+          const sumUrl = ['https', '://', 'eutils', '.', 'ncbi', '.', 'nlm', '.', 'nih', '.', 'gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id='].join('') + pmids.join(',');
+          const sumRes = await fetch(sumUrl, { signal: AbortSignal.timeout(2200) });
+          if (sumRes.ok) {
+            const sumData = await sumRes.json();
+            const cites = pmids.map(id => {
+              const item = sumData?.result?.[id];
+              return item ? `• PMID:${id} (${item.pubdate || ''}): ${item.title}` : '';
+            }).filter(Boolean);
+            if (cites.length) {
+              logLedger(`Anchored ${cites.length} peer-reviewed PubMed citations.`);
+              return '\n\nVERIFIED PUBMED LITERATURE ANCHORS:\n' + cites.join('\n');
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  try {
+    const wikiUrl = ['https', '://', 'en', '.', 'wikipedia', '.', 'org/api/rest_v1/page/summary/'].join('') + encodeURIComponent(cleanQ.split(/\s+/).slice(0, 3).join('_'));
+    const wRes = await fetch(wikiUrl, { signal: AbortSignal.timeout(1800) });
+    if (wRes.ok) {
+      const wData = await wRes.json();
+      if (wData?.extract) {
+        logLedger(`Anchored baseline summary (${wData.title}).`);
+        return `\n\nBASELINE REFERENCE (${wData.title}):\n${wData.extract.slice(0, 600)}`;
+      }
+    }
+  } catch (_) {}
+
+  return '';
+}
 async function loadPersonaCanon(p) {
   const files = (ARCHETYPES[p] && ARCHETYPES[p].docs) || ['CANON_CORE.md'];
   try {
@@ -224,6 +369,53 @@ window.copyDossier = function() {
   logLedger('Copied viewer text to clipboard.');
 };
 
+function nextAlmanacIdForZone(zoneStart) {
+  const used = state.almanac
+    .map(s => parseInt(String(s.framework_id).replace('FR-', ''), 10))
+    .filter(n => !isNaN(n) && n >= zoneStart && n < zoneStart + 100);
+  const nextNum = used.length ? Math.max(...used) + 1 : Math.max(1, zoneStart + 1);
+  return 'FR-' + String(nextNum).padStart(3, '0');
+}
+
+window.autoPlantCurrentWork = async function() {
+  const latest = state.latestDossier || (state.chatHistory.slice().reverse().find(m => m.role === 'assistant') || {}).content || '';
+  if (!latest) {
+    appendChat('lumen', 'Generate a synthesis or response first, then click "Plant to Almanac" to auto-assign an FR-xxx shelfmark.', 'ALMANAC // NOTICE');
+    return;
+  }
+  const arch = ARCHETYPES[state.persona] || ARCHETYPES.base;
+  const frId = nextAlmanacIdForZone(arch.zone);
+  const cleanLines = latest.replace(/[#*`>|]/g, '').split('\n').map(l => l.trim()).filter(l => l.length > 20);
+  const title = (cleanLines.at(0) || arch.bed + ' Synthesis').slice(0, 60);
+  const invariant = (cleanLines.at(1) || cleanLines.at(0) || 'Coherence verified under explicit constraint.').slice(0, 180);
+  const tier = classifyEpistemicTier(state.persona + ' ' + latest.slice(0, 400));
+
+  const record = {
+    framework_id: frId,
+    name: title,
+    bed: arch.bed,
+    status: 'seed',
+    almanac_shelfmark: `ALMANAC::ZONE-${String(arch.zone).padStart(3, '0')}::${arch.bed}::${frId}`,
+    one_line_invariant: invariant,
+    return_phrase: `Return to ${title}.`,
+    gate: tier
+  };
+  state.almanac = [...state.almanac.filter(s => s.framework_id !== frId), record];
+  localStorage.setItem('LUMEN_ALMANAC_SEEDS', JSON.stringify(state.almanac));
+
+  const cmdText = `Plant ${frId} | ${title} | ${arch.bed} | ${invariant}`;
+  try {
+    await fetch('http://127.0.0', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: cmdText })
+    });
+  } catch (_) {}
+
+  logLedger(`Auto-planted ${frId} (${record.almanac_shelfmark}) [${tier}].`);
+  appendChat('lumen', `Auto-cataloged into The Farmer's Almanac:\n- **Shelfmark:** \`${record.almanac_shelfmark}\`\n- **Title:** ${title}\n- **Epistemic Gate:** \`${tier}\`\n- **Invariant:** ${invariant}`, "FARMER'S ALMANAC // AUTO-PLANTED");
+};
+
 window.generateCasFieldCard = function() {
   const latest = state.latestDossier || (state.chatHistory.slice().reverse().find(m => m.role === 'assistant') || {}).content || '';
   if (!latest) {
@@ -233,7 +425,7 @@ window.generateCasFieldCard = function() {
   const cleanLines = latest.replace(/[#*`>|]/g, '').split('\n').map(l => l.trim()).filter(l => l.length > 25);
   const invariant = cleanLines.at(0) || 'Coherence preserved under explicit boundary constraints.';
   const fruit = cleanLines.slice(1, 4).map((l, i) => '  ' + (i + 1) + '. ' + l.slice(0, 140)).join('\n') || '  1. Active session synthesis ready for Almanac filing.';
-  const gate = /UNDERDETERMINED|UNVERIFIED|QUARANTINE/i.test(latest) ? 'QUARANTINE GATE: Contains unverified/underdetermined claims.' : 'CLEAR: Constraint-verified output.';
+  const gate = /UNDERDETERMINED|UNVERIFIED|QUARANTINE/i.test(latest) ? 'QUARANTINE GATE: Contains unverified/underdetermined claims.' : classifyEpistemicTier(state.persona + ' ' + latest.slice(0, 300));
 
   const casCard = [
     '# CAS POCKET FIELD CARD // STEWARD BRIEF',
@@ -262,8 +454,11 @@ window.openAlmanacViewer = async function() {
       fetch('http://127.0.0')
     ]);
     if (aRes.ok) {
-      seeds = await aRes.json();
-      sourceLabel = 'LIVE HOSHI ENGINE VAULT (http://127.0.0)';
+      const remoteSeeds = await aRes.json();
+      if (remoteSeeds.length) {
+        seeds = remoteSeeds;
+        sourceLabel = 'LIVE HOSHI ENGINE VAULT (http://127.0.0)';
+      }
     }
     if (mRes.ok) {
       recentMemories = (await mRes.json()).slice(0, 8);
@@ -271,8 +466,8 @@ window.openAlmanacViewer = async function() {
   } catch (_) {}
 
   const seedLines = seeds.length
-    ? seeds.map(s => `[${s.framework_id}] ${s.name} (${String(s.status).toUpperCase()}) — ${s.almanac_shelfmark}\n  Invariant: ${s.one_line_invariant}\n  Return Phrase: "${s.return_phrase}"`).join('\n\n')
-    : 'No FR-xxx seeds planted yet.\nType in chat: Plant FR-001 | Hoshi Engine | KERNEL | Local-first SQLite state and Almanac archive.';
+    ? seeds.map(s => `[${s.framework_id}] ${s.name} (${String(s.status).toUpperCase()}) — ${s.almanac_shelfmark}\n  Gate: ${s.gate || s.quarantine_notes || 'CANONICAL'}\n  Invariant: ${s.one_line_invariant}`).join('\n\n')
+    : 'No FR-xxx seeds planted yet.';
 
   const memLines = recentMemories.length
     ? '\n\n========================================\nVERIFIED HOSHI SQLITE Δ-FRAGMENTS (LATEST)\n========================================\n' +
@@ -280,7 +475,7 @@ window.openAlmanacViewer = async function() {
     : '';
 
   document.getElementById('dossier-content').textContent =
-    `SOURCE: ${sourceLabel}\nTOTAL PLANTED SEEDS: ${seeds.length}\n========================================\n\n${seedLines}${memLines}`;
+    `SOURCE: ${sourceLabel}\nTOTAL CATALOGED ENTRIES: ${seeds.length} | INDEXED DOCS: ${state.docIndex.length}\n========================================\n\n${seedLines}${memLines}`;
   document.getElementById('dossier-modal').showModal();
 };
 
@@ -318,7 +513,6 @@ window.exportSessionLog = function() {
   URL.revokeObjectURL(url);
   logLedger('Exported Δ-chain session ledger (.md).');
 };
-
 window.loadSampleOpsAudit = function() {
   if (state.porchMode) window.togglePorchMode();
   const sampleContract =
@@ -337,7 +531,7 @@ window.loadSampleOpsAudit = function() {
 async function queryModel(systemPrompt, messages) {
   const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').replace(/['"\s]/g, '');
   let providerDiag = '';
-  const safeSys = systemPrompt.slice(0, 4200);
+  const safeSys = systemPrompt.slice(0, 4400);
   const safeMsgs = messages.map(m => ({ role: m.role, content: String(m.content).slice(0, 3200) }));
 
   if (apiKey.toLowerCase().startsWith('ollama:') || !apiKey) {
@@ -368,6 +562,7 @@ async function queryModel(systemPrompt, messages) {
       if (requestedModel) providerDiag += 'Ollama offline at 127.0.0.1:11434 | ';
     }
   }
+
   if (apiKey.startsWith('gsk_')) {
     const groqBase = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1'].join('');
     const tryGroqModel = async (mId) => {
@@ -441,7 +636,6 @@ async function queryModel(systemPrompt, messages) {
   if (!res.ok) throw new Error(providerDiag + 'Open-Core HTTP ' + res.status);
   return { reply: (await res.text()).trim(), engine: 'OPEN-CORE' };
 }
-
 function saveBookState() {
   localStorage.setItem('LUMEN_BOOK_STATE', JSON.stringify(state.book));
   const words = (state.book.fullText.match(/\S+/g) || []).length;
@@ -449,6 +643,7 @@ function saveBookState() {
   const stats = document.getElementById('book-stats');
   if (stats) stats.textContent = words.toLocaleString() + ' words (~' + (words ? pages : 0) + ' pages) | Sec ' + state.book.nextIndex + '/' + state.book.sections.length;
 }
+
 window.generateBookBlueprint = async function() {
   const input = document.getElementById('prompt-input');
   const lastUserMsg = [...state.chatHistory].reverse().find(m => m.role === 'user')?.content || '';
@@ -546,6 +741,8 @@ window.runArchetypePipeline = async function() {
   const arch = ARCHETYPES[state.persona];
   appendChat('user', 'INITIATE ' + arch.btn.toUpperCase() + ': ' + target, 'STEWARD // DIRECTIVE');
 
+  const matchedCanon = retrieveRelevantCanon(target, state.persona);
+  const liveEvidence = await fetchCoherenceEvidence(target, state.persona);
   const forms = ['orb', 'lantern', 'character'];
   let fullReport = '# ' + state.persona.toUpperCase() + ' // MULTI-PASS DOSSIER\nTARGET: ' + target + '\nTIMESTAMP: ' + new Date().toISOString() + '\n\n';
   let runningSummary = '';
@@ -557,8 +754,9 @@ window.runArchetypePipeline = async function() {
     try {
       const promptMsg = 'Execute "' + arch.passes.at(i) + '" for target: "' + target + '". Be rigorous, structured, and true to your archetype.' +
         (runningSummary ? '\n\nPRIOR STAGES:\n' + runningSummary.slice(-900) : '') +
-        (state.attachedContext ? '\n\nATTACHED SOURCE:\n' + state.attachedContext.slice(0, 800) : '');
-      const { reply, engine } = await queryModel(arch.prompt, [{ role: 'user', content: promptMsg }]);
+        (state.attachedContext ? '\n\nATTACHED SOURCE:\n' + state.attachedContext.slice(0, 800) : '') +
+        liveEvidence;
+      const { reply, engine } = await queryModel(arch.prompt + '\n\nRETRIEVED CANON:\n' + matchedCanon, [{ role: 'user', content: promptMsg }]);
       runningSummary += '\n[' + stageTitle + ']\n' + reply;
       fullReport += '## ' + stageTitle + ' (' + engine + ')\n' + reply + '\n\n';
       appendChat('lumen', reply, stageTitle, 'sweep');
@@ -572,8 +770,8 @@ window.runArchetypePipeline = async function() {
     }
   }
   state.latestDossier = fullReport;
-  logLedger('Multi-pass pipeline complete. Dossier ready for CAS Card or Almanac.');
-  appendChat('lumen', 'Pipeline complete. Click "CAS Field Card" for a 5-line digest or "View Dossier / Book" for the full report.', state.persona.toUpperCase() + ' // COMPLETE');
+  logLedger('Multi-pass pipeline complete. Ready for CAS Field Card or Plant to Almanac.');
+  appendChat('lumen', 'Pipeline complete. Click "CAS Field Card" for a 5-line digest or "Plant to Almanac" to auto-catalog.', state.persona.toUpperCase() + ' // COMPLETE');
   window.setForm('character');
 };
 
@@ -624,7 +822,8 @@ window.sendMessage = async function() {
         framework_id: code, name: name.trim(), bed: cleanBed, status: 'seed',
         almanac_shelfmark: `ALMANAC::${cleanBed}::${code}`,
         one_line_invariant: invariant.trim(),
-        return_phrase: `Return to ${name.trim()}.`
+        return_phrase: `Return to ${name.trim()}.`,
+        gate: classifyEpistemicTier(name + ' ' + invariant)
       };
       state.almanac = [...state.almanac.filter(s => s.framework_id !== code), record];
       localStorage.setItem('LUMEN_ALMANAC_SEEDS', JSON.stringify(state.almanac));
@@ -659,9 +858,11 @@ window.sendMessage = async function() {
   if (state.chatHistory.length > 4) state.chatHistory = state.chatHistory.slice(-4);
 
   const arch = ARCHETYPES[state.persona];
+  const matchedCanon = state.porchMode ? '' : retrieveRelevantCanon(text, state.persona);
+  const liveEvidence = state.porchMode ? '' : await fetchCoherenceEvidence(text, state.persona);
   const fullSystem = state.porchMode
     ? "You are Lumen in Porch Mode (FR-030): warm, grounded, natural everyday conversation with zero doctrine pressure, zero jargon, and zero archive logging."
-    : arch.prompt + '\n\nACTIVE CANON:\n' + state.canonSpine + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext;
+    : arch.prompt + '\n\nRETRIEVED CANON:\n' + matchedCanon + '\n\nEXTERNAL CONTEXT:\n' + state.attachedContext + liveEvidence;
 
   try {
     const { reply, engine } = await queryModel(fullSystem, state.chatHistory);
@@ -695,5 +896,6 @@ function updateVitalsUI() {
 const savedKey = localStorage.getItem('LUMEN_GEMINI_KEY');
 if (savedKey) document.getElementById('api-key-input').value = savedKey;
 loadPersonaCanon('base');
+bootstrapAlmanacAndDocs();
 saveBookState();
 updateVitalsUI();
