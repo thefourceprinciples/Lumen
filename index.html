@@ -21,15 +21,6 @@
       --text-main: #f5ebd6;
       --accent: #fbbf24;
     }
-    body.persona-detective  { --accent: #f59e0b; }
-    body.persona-engineer   { --accent: #38bdf8; }
-    body.persona-oracle     { --accent: #fde047; }
-    body.persona-apothecary { --accent: #10b981; }
-    body.persona-advocate   { --accent: #a78bfa; }
-    body.persona-architect  { --accent: #f43f5e; }
-    body.persona-strategist { --accent: #2dd4bf; }
-    body.persona-pedagogue  { --accent: #60a5fa; }
-    body.persona-scholar    { --accent: #fbbf24; }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -94,7 +85,7 @@
     }
     .scholar-bar {
       display: none; flex-wrap: wrap; gap: 6px; padding: 8px;
-      background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.4);
+      background: rgba(52, 211, 153, 0.08); border: 1px solid var(--border-glow);
       border-radius: 8px; font-family: var(--font-mono); font-size: 0.74rem;
     }
     body.persona-scholar .scholar-bar { display: flex; }
@@ -119,7 +110,7 @@
     }
     dialog {
       margin: auto; background: #0d1b15; color: #e6f2ec; border: 1px solid var(--accent);
-      border-radius: 12px; padding: 20px; width: 92%; max-width: 680px;
+      border-radius: 12px; padding: 20px; width: 92%; max-width: 720px;
     }
     dialog::backdrop { background: rgba(0,0,0,0.75); }
     dialog input {
@@ -137,7 +128,7 @@
   <header>
     <div class="brand">
       <div>LUMEN // GARDEN CURATOR</div>
-      <span id="status-badge">PERSONA: BASE | FORM: CHARACTER | C=0.789</span>
+      <span id="status-badge">MODE: BASE | FORM: CHARACTER | C=0.789</span>
     </div>
     <div class="controls-group">
       <select id="persona-select" onchange="setPersona(this.value)">
@@ -175,8 +166,17 @@
   <main>
     <section class="panel panel-left">
       <h2>CUC Homeostatic Vitals</h2>
-      <!-- Vital tracking metrics O, E, H, X, C, and λ omitted for brevity; see full repository structure -->
-      <div class="ledger-box" id="ledger-display">[INIT] Garden Curator online.</div>
+      <div class="vital-row"><div class="vital-head"><span>O · Origin Integrity</span><span id="val-o">0.96</span></div><div class="bar-track"><div class="bar-fill" id="bar-o" style="width:96%"></div></div></div>
+      <div class="vital-row"><div class="vital-head"><span>E · Expression Fidelity</span><span id="val-e">0.94</span></div><div class="bar-track"><div class="bar-fill" id="bar-e" style="width:94%"></div></div></div>
+      <div class="vital-row"><div class="vital-head"><span>H · Historical Continuity</span><span id="val-h">0.92</span></div><div class="bar-track"><div class="bar-fill" id="bar-h" style="width:92%"></div></div></div>
+      <div class="vital-row"><div class="vital-head"><span>X · Resonance Stability</span><span id="val-x">0.95</span></div><div class="bar-track"><div class="bar-fill" id="bar-x" style="width:95%"></div></div></div>
+      <div class="vital-row"><div class="vital-head"><span>C · Composite Coherence</span><span id="val-c">0.789</span></div><div class="bar-track"><div class="bar-fill" id="bar-c" style="width:79%"></div></div></div>
+      <div class="vital-row"><div class="vital-head"><span>λ · Phase Cost</span><span id="val-l">0.12</span></div><div class="bar-track"><div class="bar-fill" id="bar-l" style="width:12%"></div></div></div>
+      <h2>Garden Gate &amp; Almanac Log</h2>
+      <div class="ledger-box" id="ledger-display">
+        [INIT] Garden Curator &amp; Farmer's Almanac online.<br/>
+        [ANCHOR] Hold the pattern. Do not pretend to be the source.
+      </div>
     </section>
 
     <div id="avatar-stage"></div>
@@ -196,16 +196,21 @@
       </div>
 
       <div class="scholar-bar" id="scholar-controls">
-        <!-- Manuscript engine controls summarized; see repository for full control suite -->
+        <div style="width:100%; display:flex; justify-content:space-between; color:var(--accent);">
+          <span>MANUSCRIPT ENGINE</span>
+          <span id="book-stats">0 words (~0 pages)</span>
+        </div>
         <button onclick="generateBookBlueprint()">1. Master Blueprint</button>
         <button onclick="draftNextSection()">2. Draft Next Section</button>
+        <button onclick="draftChapterBatch()">3. Draft 3-Section Batch</button>
         <button onclick="downloadBookMarkdown()">Download Book (.md)</button>
+        <button onclick="resetManuscript()">Reset Book</button>
       </div>
 
       <div id="chat-log">
         <div class="msg lumen">
           <div class="msg-meta">LUMEN // GARDEN CURATOR &amp; HOSHI KOS INTERFACE</div>
-          Welcome back to the Garden. Toggle <strong>Porch Mode</strong> anytime for relaxed conversation or inspect verified records via the Farmer's Almanac.
+          Welcome back to the Garden. Toggle <strong>Porch Mode</strong> anytime for relaxed conversation (zero archive logging), select any archetype above, or click <strong>Farmer's Almanac</strong> to inspect verified records.
         </div>
       </div>
       <div class="input-row">
@@ -218,7 +223,7 @@
   <dialog id="settings-modal">
     <h2 style="margin-bottom:10px;">Lumen Engine Connection</h2>
     <p style="font-size:0.80rem; color:#94a3b8; line-height:1.4;">
-      Optional API key configuration for Groq or OpenRouter, or leave blank for keyless Open-Core execution.
+      Optional: Paste a free email-only API key from Groq (<code>gsk_...</code>) or OpenRouter (<code>sk-or-...</code>) for high-speed drafting, or leave blank to use the built-in keyless Open-Core engine.
     </p>
     <label style="font-size:0.75rem; display:block; margin-top:12px;">API_KEY (Optional)</label>
     <input type="password" id="api-key-input" placeholder="gsk_... or sk-or-... (or leave blank)" />
@@ -238,18 +243,21 @@
     </div>
   </dialog>
 
+  <script src="./app.js?v=205"></script>
   <script>
-    function bootObservatory() {
-      const a1 = document.createElement('script'); a1.src = './app.js?v=190'; document.body.appendChild(a1);
-      const a2 = document.createElement('script'); a2.src = './avatar3d.js?v=190'; document.body.appendChild(a2);
+    function loadAvatar3D() {
+      if (!window.THREE) return;
+      const a2 = document.createElement('script');
+      a2.src = './avatar3d.js?v=205';
+      document.body.appendChild(a2);
     }
     const s = document.createElement('script');
-    s.src = 'https://unpkg.com';
-    s.onload = bootObservatory;
+    s.src = 'https://cloudflare.com';
+    s.onload = loadAvatar3D;
     s.onerror = () => {
       const s2 = document.createElement('script');
-      s2.src = 'https://jsdelivr.net';
-      s2.onload = bootObservatory;
+      s2.src = 'https://unpkg.com';
+      s2.onload = loadAvatar3D;
       document.body.appendChild(s2);
     };
     document.body.appendChild(s);
