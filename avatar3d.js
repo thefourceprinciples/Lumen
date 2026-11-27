@@ -52,8 +52,8 @@ const matHoloWire = new THREE.MeshBasicMaterial({ color: 0x34d399, wireframe: tr
 const matHoloCore = new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x34d399, emissiveIntensity: 1.8, roughness: 0.2 });
 
 const PALETTES = {
-  base: 0x34d399, detective: 0xf59e0b, engineer: 0x22d3ee, oracle: 0xfde047,
-  apothecary: 0x10b981, advocate: 0xa78bfa, architect: 0xf43f5e, strategist: 0x2dd4bf,
+  base: 0x34d399, detective: 0xf59e0b, engineer: 0x38bdf8, oracle: 0xfde047,
+  apothecary: 0x10b981, advocate: 0xc084fc, architect: 0xfb7185, strategist: 0x2dd4bf,
   pedagogue: 0x60a5fa, scholar: 0xfbbf24
 };
 
@@ -199,8 +199,8 @@ scene.add(starField);
 let t = 0;
 function animate() {
   requestAnimationFrame(animate);
-  t += 0.025;
-  if (!isDragging) camYaw += 0.004;
+  t += 0.045;
+  if (!isDragging) camYaw += 0.007;
 
   const st = window.LUMEN_STATE || { persona: 'base', form: 'character', layout: 'docked', porchMode: false };
   const hex = PALETTES[st.persona] || 0x34d399;
@@ -210,7 +210,7 @@ function animate() {
   rimLight.color.setHex(hex);
   ring1.material.color.setHex(hex);
   ring2.material.color.setHex(hex);
-  starMat.color.setHex(hex);
+  starMat.color.setHex(st.porchMode ? 0xfbbf24 : hex);
 
   const isRoam = (st.layout === 'roam');
   const roamX = isRoam ? Math.cos(t * 0.45) * 1.15 : 0;
@@ -226,6 +226,7 @@ function animate() {
   camera.lookAt(0, 0.1, 0);
 
   starField.rotation.y = t * 0.08;
+  starField.visible = true;
 
   baseGroup.visible = !st.porchMode;
   holoGroup.visible = !st.porchMode;
