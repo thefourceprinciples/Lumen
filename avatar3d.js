@@ -199,7 +199,7 @@ scene.add(starField);
 let t = 0;
 function animate() {
   requestAnimationFrame(animate);
-  t += 0.035;
+  t += 0.075;
   if (!isDragging) camYaw += 0.007;
 
   const st = window.LUMEN_STATE || { persona: 'base', form: 'character', layout: 'docked', porchMode: false };
