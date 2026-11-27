@@ -136,7 +136,7 @@ window.saveApiKey = function() {
   if (val) localStorage.setItem('LUMEN_GEMINI_KEY', val);
   else localStorage.removeItem('LUMEN_GEMINI_KEY');
   document.getElementById('settings-modal').close();
-  logLedger('Engine key updated (' + (val ? val.slice(0, 6) + '...' : 'cleared') + ').');
+  logLedger('Engine config updated (' + (val ? val.slice(0, 10) + '...' : 'auto-detect') + ').');
 };
 
 function logLedger(entry) {
@@ -340,6 +340,34 @@ async function queryModel(systemPrompt, messages) {
   const safeSys = systemPrompt.slice(0, 4200);
   const safeMsgs = messages.map(m => ({ role: m.role, content: String(m.content).slice(0, 3200) }));
 
+  if (apiKey.toLowerCase().startsWith('ollama:') || !apiKey) {
+    const requestedModel = apiKey.toLowerCase().startsWith('ollama:') ? apiKey.slice(7).trim() : '';
+    try {
+      const oBase = 'http://127.0.0.1:11434';
+      let targetModel = requestedModel;
+      if (!targetModel) {
+        const tagsRes = await fetch(oBase + '/api/tags', { signal: AbortSignal.timeout(900) });
+        if (tagsRes.ok) {
+          const tagsData = await tagsRes.json();
+          targetModel = tagsData?.models?.at(0)?.name || '';
+        }
+      }
+      if (targetModel) {
+        const oRes = await fetch(oBase + '/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: targetModel, stream: false, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
+        });
+        if (oRes.ok) {
+          const oData = await oRes.json();
+          const reply = oData?.message?.content;
+          if (reply) return { reply, engine: 'OLLAMA OFFLINE (' + targetModel + ')' };
+        }
+      }
+    } catch (_) {
+      if (requestedModel) providerDiag += 'Ollama offline at 127.0.0.1:11434 | ';
+    }
+  }
   if (apiKey.startsWith('gsk_')) {
     const groqBase = ['https', '://', ['api', 'groq', 'com'].join('.'), '/openai/v1'].join('');
     const tryGroqModel = async (mId) => {
@@ -413,6 +441,7 @@ async function queryModel(systemPrompt, messages) {
   if (!res.ok) throw new Error(providerDiag + 'Open-Core HTTP ' + res.status);
   return { reply: (await res.text()).trim(), engine: 'OPEN-CORE' };
 }
+
 function saveBookState() {
   localStorage.setItem('LUMEN_BOOK_STATE', JSON.stringify(state.book));
   const words = (state.book.fullText.match(/\S+/g) || []).length;
@@ -420,7 +449,6 @@ function saveBookState() {
   const stats = document.getElementById('book-stats');
   if (stats) stats.textContent = words.toLocaleString() + ' words (~' + (words ? pages : 0) + ' pages) | Sec ' + state.book.nextIndex + '/' + state.book.sections.length;
 }
-
 window.generateBookBlueprint = async function() {
   const input = document.getElementById('prompt-input');
   const lastUserMsg = [...state.chatHistory].reverse().find(m => m.role === 'user')?.content || '';
