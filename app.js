@@ -90,9 +90,10 @@ window.setPersona = function(p) {
   const btn = document.getElementById('btn-pipeline');
   if (btn) btn.textContent = ARCHETYPES[p].btn;
   loadPersonaCanon(p);
-  window.setForm('orb');
-  setTimeout(() => window.setForm('fox'), 450);
-  setTimeout(() => window.setForm('character'), 1400);
+  if (!state.porchMode) {
+    window.setForm('orb');
+    setTimeout(() => window.setForm('character'), 750);
+  }
 };
 
 window.setForm = function(f) { state.form = f; updateBadge(); };
@@ -112,6 +113,7 @@ window.togglePorchMode = function() {
   const btn = document.getElementById('btn-porch');
   btn.textContent = 'Porch Mode: ' + (state.porchMode ? 'ON (Casual)' : 'OFF');
   btn.classList.toggle('active', state.porchMode);
+  window.setForm(state.porchMode ? 'porch' : 'character');
   updateBadge();
   logLedger(state.porchMode ? 'Porch Mode ON: Casual chat active (zero archive saving).' : 'Porch Mode OFF: Garden Curator & Almanac sync active.');
 };
@@ -428,7 +430,7 @@ window.generateBookBlueprint = async function() {
     return;
   }
   input.value = '';
-  window.setForm('fox');
+  if (!state.porchMode) window.setForm('orb');
   logLedger('Generating Master Tome Blueprint...');
   try {
     const prompt = 'Create a comprehensive 16-section Master Monograph Outline for a multi-volume scholarly work titled: "' + title + '". ' +
@@ -446,7 +448,7 @@ window.generateBookBlueprint = async function() {
   } catch (err) {
     appendChat('lumen', 'Blueprint error: ' + err.message, 'SCHOLAR // FAULT');
   } finally {
-    window.setForm('character');
+    if (!state.porchMode) window.setForm('character');
   }
 };
 
@@ -455,7 +457,7 @@ window.draftNextSection = async function() {
   if (state.book.nextIndex >= state.book.sections.length) { appendChat('lumen', 'All queued sections drafted! Click "Download Book (.md)".', 'SCHOLAR // COMPLETE'); return false; }
   const idx = state.book.nextIndex;
   const secTitle = state.book.sections.at(idx);
-  window.setForm('lantern');
+  if (!state.porchMode) window.setForm('lantern');
   logLedger('Drafting Section ' + (idx + 1) + '/' + state.book.sections.length + '...');
   try {
     const prompt = 'Write an exhaustive, publication-grade scholarly section (1,500+ words, deep primary analysis, UCMS substrate layers, Evidence Tiers A-Q, and explicit UNDERDETERMINED markers) for:\n' +
@@ -473,7 +475,7 @@ window.draftNextSection = async function() {
     appendChat('lumen', 'Section draft paused: ' + err.message, 'SCHOLAR // FAULT');
     return false;
   } finally {
-    window.setForm('character');
+    if (!state.porchMode) window.setForm('character');
   }
 };
 
@@ -516,7 +518,7 @@ window.runArchetypePipeline = async function() {
   const arch = ARCHETYPES[state.persona];
   appendChat('user', 'INITIATE ' + arch.btn.toUpperCase() + ': ' + target, 'STEWARD // DIRECTIVE');
 
-  const forms = ['fox', 'lantern', 'character'];
+  const forms = ['orb', 'lantern', 'character'];
   let fullReport = '# ' + state.persona.toUpperCase() + ' // MULTI-PASS DOSSIER\nTARGET: ' + target + '\nTIMESTAMP: ' + new Date().toISOString() + '\n\n';
   let runningSummary = '';
 
@@ -549,7 +551,7 @@ window.runArchetypePipeline = async function() {
 
 window.continueThought = async function() {
   if (!state.chatHistory.length) { appendChat('lumen', 'No prior thought in working memory to continue yet.', 'LUMEN // NOTICE'); return; }
-  window.setForm('lantern');
+  if (!state.porchMode) window.setForm('lantern');
   logLedger('Continuing previous thought stream...');
   const arch = ARCHETYPES[state.persona];
   const fullSystem = state.porchMode
@@ -571,7 +573,7 @@ window.continueThought = async function() {
   } catch (err) {
     appendChat('lumen', 'Relay status: ' + err.message, 'LUMEN // FAULT');
   } finally {
-    window.setForm('character');
+    if (!state.porchMode) window.setForm('character');
   }
 };
 
@@ -584,7 +586,7 @@ window.sendMessage = async function() {
 
   const gardenCmd = /^(plant\s+FR-\d+|water\s+FR-\d+|restore\s+FR-\d+|compost\s+FR-\d+|quarantine\s+FR-\d+|market\s+FR-\d+|promote\s+FR-\d+|garden\s+harvest)/i.test(text);
   if (gardenCmd) {
-    window.setForm('orb');
+    if (!state.porchMode) window.setForm('orb');
     const plantMatch = text.match(/^plant\s+(FR-\d+)\s*\|\s*([^|]+)\|\s*([^|]+)\|\s*(.+)$/i);
     if (plantMatch) {
       const [, frId, name, bed, invariant] = plantMatch;
@@ -611,18 +613,18 @@ window.sendMessage = async function() {
         const payload = JSON.stringify(hData.structured_result?.garden || hData, null, 2);
         appendChat('lumen', 'Synced directly with Hoshi Engine Vault:\n```json\n' + payload + '\n```', "FARMER'S ALMANAC // HOSHI SYNC");
         logLedger('Synced Almanac command with Hoshi SQLite.');
-        window.setForm('character');
+        if (!state.porchMode) window.setForm('character');
         return;
       }
     } catch (_) {}
 
     appendChat('lumen', 'Command processed in local Garden Almanac (`' + text + '`). Start `HOSHI_WEB=1 python app_identity.py` locally to mirror to SQLite.', "FARMER'S ALMANAC // LOCAL");
     logLedger('Executed local Almanac command: ' + text);
-    window.setForm('character');
+    if (!state.porchMode) window.setForm('character');
     return;
   }
 
-  window.setForm('lantern');
+  if (!state.porchMode) window.setForm('lantern');
   await new Promise(r => setTimeout(r, 80));
 
   state.chatHistory.push({ role: 'user', content: text });
@@ -646,7 +648,7 @@ window.sendMessage = async function() {
   } catch (err) {
     appendChat('lumen', 'Relay status: ' + err.message, 'LUMEN // FAULT');
   } finally {
-    window.setForm('character');
+    if (!state.porchMode) window.setForm('character');
   }
 };
 
