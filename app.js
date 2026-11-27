@@ -51,7 +51,9 @@ const ARCHETYPES = {
     docs: ['CANON_CORE.md', 'OMNICOHERENCE_AND_HOLONOMY.md'],
     prompt: "You are Lumen in APOTHECARY-SHAMAN mode (bridging molecular genetics, bioenergetics, and historical ethnobotany). Distinguish peer-reviewed biology from ethnobotanical lore and remind the user to consult a licensed physician for medical decisions.",
     passes: ['Molecular & Epigenetic Substrate Mapping', 'Ethnobotanical & Historical Pharmacopeia Crosswalk', 'Harm-Reduction & Clinical Boundary Gate']
-  },
+  }
+};
+Object.assign(ARCHETYPES, {
   advocate: {
     btn: 'Run Jurisprudence Audit (3-Pass)', zone: 300, bed: 'GOVERNANCE',
     docs: ['FIVE_COMMITMENTS.md', 'SYNTHETIC_AGENCY_AND_MERIDIA.md'],
@@ -82,7 +84,8 @@ const ARCHETYPES = {
     prompt: "You are Lumen in SCHOLAR-AUTHOR mode: an encyclopedic monograph writer engineered for 900+ page treatises. Write dense, exhaustive, deeply analytical academic prose grounded in UCMS 24-layer stratigraphy and Tier A-Q evidence discipline.",
     passes: ['Volume & Part Architecture', 'Chapter & Section Decomposition', 'Continuity Bible & Citation Key']
   }
-};
+});
+
 async function bootstrapAlmanacAndDocs(forceRefresh = false) {
   const coreRepos = [
     { framework_id: 'FR-001', name: 'Fource-CUC Core VM', bed: 'CORE', status: 'tree', almanac_shelfmark: 'ALMANAC::ZONE-000::CORE::FR-001', one_line_invariant: 'Coherence Under Constraint (C = O*E*H*X) algebraic virtual machine.', return_phrase: 'Return to Fource-CUC Core.', gate: 'CANONICAL // CORE AXIOM' },
@@ -97,9 +100,7 @@ async function bootstrapAlmanacAndDocs(forceRefresh = false) {
     const existingCustom = state.almanac.filter(s => parseInt(s.framework_id.replace('FR-', ''), 10) > 60);
     state.almanac = [...coreRepos, ...existingCustom];
   }
-
   if (state.docIndex.length >= 10 && !forceRefresh) return;
-
   try {
     const apiUrl = ['https', '://', 'api', '.', 'github', '.', 'com/repos/thefourceprinciples/Lumen/contents/docs'].join('');
     const dirRes = await fetch(apiUrl);
@@ -122,22 +123,17 @@ async function bootstrapAlmanacAndDocs(forceRefresh = false) {
         const zone = tier.startsWith('CANONICAL') ? 'ZONE-000::CORE' : 'ZONE-200::MODELS';
 
         indexed.push({
-          file: f.name,
-          title: titleLine,
-          tier,
+          file: f.name, title: titleLine, tier,
           keywords: (f.name + ' ' + titleLine + ' ' + summaryLine).toLowerCase(),
           excerpt: `[${f.name} | ${tier}]\n${txt.slice(0, 1100)}`
         });
 
         newSeeds.push({
-          framework_id: frId,
-          name: titleLine.slice(0, 64),
-          bed: tier.startsWith('CANONICAL') ? 'CANON' : 'MODELS',
-          status: 'rooted',
+          framework_id: frId, name: titleLine.slice(0, 64),
+          bed: tier.startsWith('CANONICAL') ? 'CANON' : 'MODELS', status: 'rooted',
           almanac_shelfmark: `ALMANAC::${zone}::${frId}`,
           one_line_invariant: summaryLine,
-          return_phrase: `Return to ${titleLine.slice(0, 40)}.`,
-          gate: tier
+          return_phrase: `Return to ${titleLine.slice(0, 40)}.`, gate: tier
         });
       } catch (_) {}
     }
@@ -148,7 +144,7 @@ async function bootstrapAlmanacAndDocs(forceRefresh = false) {
       const customSeeds = state.almanac.filter(s => parseInt(s.framework_id.replace('FR-', ''), 10) > 60);
       state.almanac = [...coreRepos, ...newSeeds, ...customSeeds];
       localStorage.setItem('LUMEN_ALMANAC_SEEDS', JSON.stringify(state.almanac));
-      logLedger(`Auto-indexed ${indexed.length} docs into Farmer's Almanac (FR-001 to FR-${String(6 + indexed.length).padStart(3, '0')}).`);
+      logLedger(`Auto-indexed ${indexed.length} docs into Farmer's Almanac.`);
     }
   } catch (_) {}
 }
@@ -156,7 +152,6 @@ async function bootstrapAlmanacAndDocs(forceRefresh = false) {
 function retrieveRelevantCanon(queryText, personaKey) {
   const archDocs = (ARCHETYPES[personaKey] && ARCHETYPES[personaKey].docs) || ['CANON_CORE.md'];
   if (!state.docIndex.length) return state.canonSpine;
-
   const tokens = String(queryText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
   const scored = state.docIndex.map(doc => {
     let score = archDocs.includes(doc.file) ? 4 : 0;
@@ -165,11 +160,9 @@ function retrieveRelevantCanon(queryText, personaKey) {
     }
     return { doc, score };
   });
-
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, 3).map(s => s.doc.excerpt).join('\n\n---\n\n').slice(0, 3400);
 }
-
 async function fetchCoherenceEvidence(queryText, personaKey) {
   if (state.attachedContext || state.porchMode) return '';
   if (!['apothecary', 'engineer', 'detective', 'scholar'].includes(personaKey)) return '';
@@ -213,9 +206,9 @@ async function fetchCoherenceEvidence(queryText, personaKey) {
       }
     }
   } catch (_) {}
-
   return '';
 }
+
 async function loadPersonaCanon(p) {
   const files = (ARCHETYPES[p] && ARCHETYPES[p].docs) || ['CANON_CORE.md'];
   try {
@@ -224,7 +217,6 @@ async function loadPersonaCanon(p) {
     logLedger('Loaded ' + files.join(' + ') + ' from docs/.');
   } catch (_) {}
 }
-
 window.setPersona = function(p) {
   if (!ARCHETYPES[p]) p = 'base';
   state.persona = p;
@@ -281,7 +273,7 @@ window.saveApiKey = function() {
   if (val) localStorage.setItem('LUMEN_GEMINI_KEY', val);
   else localStorage.removeItem('LUMEN_GEMINI_KEY');
   document.getElementById('settings-modal').close();
-  logLedger('Engine config updated (' + (val ? val.slice(0, 10) + '...' : 'auto-detect') + ').');
+  logLedger('Engine config updated (' + (val ? val.slice(0, 8) + '...' : 'auto-detect') + ').');
 };
 
 function logLedger(entry) {
@@ -354,7 +346,6 @@ function appendChat(sender, text, meta, extraClass) {
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
-
 window.openLatestDossier = function() {
   const content = state.book.fullText || state.latestDossier;
   document.getElementById('dossier-title').textContent = 'LUMEN // DOSSIER, CAS CARD & ALMANAC VIEWER';
@@ -391,14 +382,9 @@ window.autoPlantCurrentWork = async function() {
   const tier = classifyEpistemicTier(state.persona + ' ' + latest.slice(0, 400));
 
   const record = {
-    framework_id: frId,
-    name: title,
-    bed: arch.bed,
-    status: 'seed',
+    framework_id: frId, name: title, bed: arch.bed, status: 'seed',
     almanac_shelfmark: `ALMANAC::ZONE-${String(arch.zone).padStart(3, '0')}::${arch.bed}::${frId}`,
-    one_line_invariant: invariant,
-    return_phrase: `Return to ${title}.`,
-    gate: tier
+    one_line_invariant: invariant, return_phrase: `Return to ${title}.`, gate: tier
   };
   state.almanac = [...state.almanac.filter(s => s.framework_id !== frId), record];
   localStorage.setItem('LUMEN_ALMANAC_SEEDS', JSON.stringify(state.almanac));
@@ -406,8 +392,7 @@ window.autoPlantCurrentWork = async function() {
   const cmdText = `Plant ${frId} | ${title} | ${arch.bed} | ${invariant}`;
   try {
     await fetch('http://127.0.0', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: cmdText })
     });
   } catch (_) {}
@@ -460,9 +445,7 @@ window.openAlmanacViewer = async function() {
         sourceLabel = 'LIVE HOSHI ENGINE VAULT (http://127.0.0)';
       }
     }
-    if (mRes.ok) {
-      recentMemories = (await mRes.json()).slice(0, 8);
-    }
+    if (mRes.ok) recentMemories = (await mRes.json()).slice(0, 8);
   } catch (_) {}
 
   const seedLines = seeds.length
@@ -497,13 +480,8 @@ window.exportSessionLog = function() {
     return;
   }
   const cVal = (state.vitals.O * state.vitals.E * state.vitals.H * state.vitals.X).toFixed(3);
-  const header = '# LUMEN OBSERVATORY // SESSION Δ-LEDGER\n' +
-    '- **Active Persona:** ' + state.persona.toUpperCase() + '\n' +
-    '- **CUC Composite (C):** ' + cVal + '\n' +
-    '- **Timestamp:** ' + new Date().toISOString() + '\n\n---\n\n';
-  const body = state.chatHistory
-    .map((m, i) => '## Δ_' + (i + 1) + ' // ' + m.role.toUpperCase() + '\n\n' + m.content)
-    .join('\n\n---\n\n');
+  const header = '# LUMEN OBSERVATORY // SESSION Δ-LEDGER\n- **Active Persona:** ' + state.persona.toUpperCase() + '\n- **CUC Composite (C):** ' + cVal + '\n- **Timestamp:** ' + new Date().toISOString() + '\n\n---\n\n';
+  const body = state.chatHistory.map((m, i) => '## Δ_' + (i + 1) + ' // ' + m.role.toUpperCase() + '\n\n' + m.content).join('\n\n---\n\n');
   const blob = new Blob([header + body], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -513,21 +491,20 @@ window.exportSessionLog = function() {
   URL.revokeObjectURL(url);
   logLedger('Exported Δ-chain session ledger (.md).');
 };
+
 window.loadSampleOpsAudit = function() {
   if (state.porchMode) window.togglePorchMode();
-  const sampleContract =
+  state.attachedContext =
     'COMMERCIAL VENDOR & EQUIPMENT SERVICE AGREEMENT (SAMPLE AUDIT)\n' +
     '1. TERM & AUTO-RENEWAL: Initial 36-month term automatically renews for successive 36-month periods unless Client gives written notice via certified mail 180 days prior to expiration.\n' +
     '2. PRICING & FUEL SURCHARGES: Vendor may adjust unit supply rates and equipment maintenance fees unilaterally by up to 14% annually without prior notice, plus variable fuel/logistics surcharges.\n' +
     '3. DATA & DERIVATIVE RIGHTS: Vendor retains a perpetual, royalty-free right to aggregate, license, and commercialize Client POS, inventory, and routing telemetry.\n' +
     '4. INDEMNIFICATION & DOWNTIME: Client indemnifies Vendor against all third-party claims arising from equipment failure; Vendor liability is capped at one (1) month of base service fees with zero SLA credit for emergency downtime.';
-  state.attachedContext = sampleContract;
   window.setPersona('advocate');
   document.getElementById('prompt-input').value = 'Commercial Vendor & Equipment Service Agreement (36-month auto-renewal, 14% price hike, POS data license, liability cap)';
   logLedger('Loaded Sample Commercial Ops & Vendor Agreement into working memory.');
   appendChat('lumen', 'Loaded Sample Commercial Vendor Agreement into working memory and switched to ADVOCATE-COUNSEL mode. Click "Run Jurisprudence Audit (3-Pass)" to run the live audit.', 'DEMO // OPS & CONTRACT AUDITOR');
 };
-
 async function queryModel(systemPrompt, messages) {
   const apiKey = (localStorage.getItem('LUMEN_GEMINI_KEY') || '').replace(/['"\s]/g, '');
   let providerDiag = '';
@@ -548,8 +525,7 @@ async function queryModel(systemPrompt, messages) {
       }
       if (targetModel) {
         const oRes = await fetch(oBase + '/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: targetModel, stream: false, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
         });
         if (oRes.ok) {
@@ -570,14 +546,14 @@ async function queryModel(systemPrompt, messages) {
         const res = await fetch(groqBase + '/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: mId, max_tokens: 2400, temperature: 0.55, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
+          body: JSON.stringify({ model: mId, max_tokens: 1800, temperature: 0.55, messages: [{ role: 'system', content: safeSys }, ...safeMsgs] })
         });
         const data = await res.json();
         const reply = data?.choices?.at(0)?.message?.content;
         if (res.ok && reply) return { ok: true, reply };
         if (res.status === 429 && attempt === 0) {
-          logLedger('Groq TPM cooling down (8s)...');
-          await new Promise(r => setTimeout(r, 8000));
+          logLedger('Groq rate limit cooling down (10s)...');
+          await new Promise(r => setTimeout(r, 10000));
           continue;
         }
         return { ok: false, err: mId + ' (' + res.status + '): ' + (data?.error?.message || res.statusText) };
@@ -595,21 +571,23 @@ async function queryModel(systemPrompt, messages) {
     try {
       const mRes = await fetch(groqBase + '/models', { headers: { 'Authorization': 'Bearer ' + apiKey } });
       const mData = await mRes.json();
+      if (!mRes.ok) throw new Error('Groq key check failed (' + mRes.status + '): ' + (mData?.error?.message || mRes.statusText));
       const ids = (mData?.data || []).map(m => m.id).filter(id => !/whisper|tts|orpheus|playai|guard|embed|vision/i.test(id));
       const ranked = [
-        ...ids.filter(id => /70b|120b|versatile|instruct/i.test(id)),
-        ...ids.filter(id => !/70b|120b|versatile|instruct/i.test(id))
+        ...ids.filter(id => /llama-3\.3-70b|llama-3\.1-8b|70b|versatile|instruct/i.test(id)),
+        ...ids.filter(id => !/llama-3\.3-70b|llama-3\.1-8b|70b|versatile|instruct/i.test(id))
       ];
-      for (const gModel of ranked.slice(0, 3)) {
+      for (const gModel of ranked.slice(0, 4)) {
         const hit = await tryGroqModel(gModel);
         if (hit.ok) {
           localStorage.setItem('LUMEN_GROQ_MODEL', gModel);
+          logLedger('Connected to ' + gModel + '.');
           return { reply: hit.reply, engine: 'GROQ (' + gModel + ')' };
         }
         providerDiag += hit.err + ' | ';
       }
     } catch (e) {
-      providerDiag += 'Groq net error: ' + e.message + ' | ';
+      providerDiag += e.message + ' | ';
     }
     throw new Error(providerDiag || 'Groq rate limit reached — wait 15 seconds and click again.');
   }
@@ -648,24 +626,16 @@ window.generateBookBlueprint = async function() {
   const input = document.getElementById('prompt-input');
   const lastUserMsg = [...state.chatHistory].reverse().find(m => m.role === 'user')?.content || '';
   const title = input.value.trim() || lastUserMsg.trim();
-  if (!title) {
-    appendChat('lumen', 'Enter your book title, thesis, or research subject in the prompt box first, then click "1. Master Blueprint".', 'SCHOLAR // NOTICE');
-    return;
-  }
+  if (!title) { appendChat('lumen', 'Enter your book title, thesis, or research subject in the prompt box first, then click "1. Master Blueprint".', 'SCHOLAR // NOTICE'); return; }
   input.value = '';
   if (!state.porchMode) window.setForm('orb');
   logLedger('Generating Master Tome Blueprint...');
   try {
-    const prompt = 'Create a comprehensive 16-section Master Monograph Outline for a multi-volume scholarly work titled: "' + title + '". ' +
-      'Format EVERY section on its own line starting strictly with "SECTION: " followed by the Volume, Chapter, and detailed Section Thesis. Output 16 distinct SECTION lines.';
+    const prompt = 'Create a comprehensive 16-section Master Monograph Outline for a multi-volume scholarly work titled: "' + title + '". Format EVERY section on its own line starting strictly with "SECTION: " followed by the Volume, Chapter, and detailed Section Thesis. Output 16 distinct SECTION lines.';
     const { reply, engine } = await queryModel(ARCHETYPES.scholar.prompt, [{ role: 'user', content: prompt }]);
     const lines = reply.split('\n').map(l => l.trim()).filter(l => l.startsWith('SECTION:')).map(l => l.replace(/^SECTION:\s*/, ''));
     const sections = lines.length >= 4 ? lines : reply.split('\n').map(l => l.trim()).filter(l => l.length > 15).slice(0, 16);
-    state.book = {
-      title, blueprint: reply, sections, nextIndex: 0,
-      continuityBible: 'THESIS: ' + title + '\n',
-      fullText: '# ' + title.toUpperCase() + '\n*Generated via Lumen Scholar-Author Engine*\n\n## MASTER BLUEPRINT\n' + reply + '\n\n---\n\n'
-    };
+    state.book = { title, blueprint: reply, sections, nextIndex: 0, continuityBible: 'THESIS: ' + title + '\n', fullText: '# ' + title.toUpperCase() + '\n*Generated via Lumen Scholar-Author Engine*\n\n## MASTER BLUEPRINT\n' + reply + '\n\n---\n\n' };
     saveBookState();
     appendChat('lumen', 'Master Blueprint locked (' + sections.length + ' deep sections queued via ' + engine + '). Click "2. Draft Next Section" or "3. Draft 3-Section Batch" to begin writing.', 'SCHOLAR // BLUEPRINT READY', 'sweep');
   } catch (err) {
@@ -683,8 +653,7 @@ window.draftNextSection = async function() {
   if (!state.porchMode) window.setForm('lantern');
   logLedger('Drafting Section ' + (idx + 1) + '/' + state.book.sections.length + '...');
   try {
-    const prompt = 'Write an exhaustive, publication-grade scholarly section (1,500+ words, deep primary analysis, UCMS substrate layers, Evidence Tiers A-Q, and explicit UNDERDETERMINED markers) for:\n' +
-      'BOOK: ' + state.book.title + '\nSECTION: ' + secTitle + '\n\nCONTINUITY BIBLE:\n' + state.book.continuityBible.slice(-1000);
+    const prompt = 'Write an exhaustive, publication-grade scholarly section (1,500+ words, deep primary analysis, UCMS substrate layers, Evidence Tiers A-Q, and explicit UNDERDETERMINED markers) for:\nBOOK: ' + state.book.title + '\nSECTION: ' + secTitle + '\n\nCONTINUITY BIBLE:\n' + state.book.continuityBible.slice(-1000);
     const { reply, engine } = await queryModel(ARCHETYPES.scholar.prompt, [{ role: 'user', content: prompt }]);
     state.book.fullText += '## ' + secTitle + '\n\n' + reply + '\n\n---\n\n';
     state.book.continuityBible += '• [' + secTitle.slice(0, 45) + ']: ' + reply.slice(0, 150).replace(/\n/g, ' ') + '...\n';
@@ -728,15 +697,13 @@ window.resetManuscript = function() {
   saveBookState();
   logLedger('Manuscript buffer cleared.');
 };
+
 window.runArchetypePipeline = async function() {
   if (state.porchMode) window.togglePorchMode();
   if (state.persona === 'scholar') { window.generateBookBlueprint(); return; }
   const input = document.getElementById('prompt-input');
   const target = input.value.trim();
-  if (!target) {
-    appendChat('lumen', 'Enter a topic, target, or text in the prompt box first, then click "' + ARCHETYPES[state.persona].btn + '".', state.persona.toUpperCase() + ' // NOTICE');
-    return;
-  }
+  if (!target) { appendChat('lumen', 'Enter a topic, target, or text in the prompt box first, then click "' + ARCHETYPES[state.persona].btn + '".', state.persona.toUpperCase() + ' // NOTICE'); return; }
   input.value = '';
   const arch = ARCHETYPES[state.persona];
   appendChat('user', 'INITIATE ' + arch.btn.toUpperCase() + ': ' + target, 'STEWARD // DIRECTIVE');
@@ -759,22 +726,23 @@ window.runArchetypePipeline = async function() {
       const { reply, engine } = await queryModel(arch.prompt + '\n\nRETRIEVED CANON:\n' + matchedCanon, [{ role: 'user', content: promptMsg }]);
       runningSummary += '\n[' + stageTitle + ']\n' + reply;
       fullReport += '## ' + stageTitle + ' (' + engine + ')\n' + reply + '\n\n';
+      state.latestDossier = fullReport;
+      state.chatHistory.push({ role: 'user', content: stageTitle + ': ' + target }, { role: 'assistant', content: reply });
+      if (state.chatHistory.length > 6) state.chatHistory = state.chatHistory.slice(-6);
       appendChat('lumen', reply, stageTitle, 'sweep');
       state.vitals.H = Math.min(1.0, +(state.vitals.H + 0.01).toFixed(2));
       updateVitalsUI();
-      await new Promise(r => setTimeout(r, 1200));
+      if (i < arch.passes.length - 1) await new Promise(r => setTimeout(r, 3200));
     } catch (err) {
-      appendChat('lumen', stageTitle + ' interrupted: ' + err.message, 'LUMEN // FAULT');
+      appendChat('lumen', stageTitle + ' paused: ' + err.message + ' — Prior stages are saved in working memory; click "Continue Thought" or "CAS Field Card" anytime.', 'LUMEN // PAUSED');
       window.setForm('character');
       return;
     }
   }
-  state.latestDossier = fullReport;
   logLedger('Multi-pass pipeline complete. Ready for CAS Field Card or Plant to Almanac.');
   appendChat('lumen', 'Pipeline complete. Click "CAS Field Card" for a 5-line digest or "Plant to Almanac" to auto-catalog.', state.persona.toUpperCase() + ' // COMPLETE');
   window.setForm('character');
 };
-
 window.continueThought = async function() {
   if (!state.chatHistory.length) { appendChat('lumen', 'No prior thought in working memory to continue yet.', 'LUMEN // NOTICE'); return; }
   if (!state.porchMode) window.setForm('lantern');
@@ -821,8 +789,7 @@ window.sendMessage = async function() {
       const record = {
         framework_id: code, name: name.trim(), bed: cleanBed, status: 'seed',
         almanac_shelfmark: `ALMANAC::${cleanBed}::${code}`,
-        one_line_invariant: invariant.trim(),
-        return_phrase: `Return to ${name.trim()}.`,
+        one_line_invariant: invariant.trim(), return_phrase: `Return to ${name.trim()}.`,
         gate: classifyEpistemicTier(name + ' ' + invariant)
       };
       state.almanac = [...state.almanac.filter(s => s.framework_id !== code), record];
@@ -831,8 +798,7 @@ window.sendMessage = async function() {
 
     try {
       const hRes = await fetch('http://127.0.0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       });
       if (hRes.ok) {
