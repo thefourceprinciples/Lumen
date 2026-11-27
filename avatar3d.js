@@ -199,8 +199,8 @@ scene.add(starField);
 let t = 0;
 function animate() {
   requestAnimationFrame(animate);
-  t += 0.095;
-  if (!isDragging) camYaw += 0.013;
+  t += 0.045;
+  if (!isDragging) camYaw += 0.007;
 
   const st = window.LUMEN_STATE || { persona: 'base', form: 'character', layout: 'docked', porchMode: false };
   const hex = PALETTES[st.persona] || 0x34d399;
