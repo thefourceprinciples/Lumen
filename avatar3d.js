@@ -106,6 +106,7 @@ for (let r = 0; r < 16; r++) {
   ray.rotation.z = a - Math.PI / 2;
   rigOra.add(ray);
 }
+
 const rigApo = makeRig('apothecary');
 for (let i = 0; i < 12; i++) {
   const y = -0.65 + i * 0.15, a = i * 0.55;
@@ -153,7 +154,6 @@ codexL.position.set(-0.2, 0.25, 0.55); codexL.rotation.set(0.35, 0, -0.2);
 const codexR = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.02, 0.52), matHoloCore);
 codexR.position.set(0.2, 0.25, 0.55); codexR.rotation.set(0.35, 0, 0.2);
 rigSch.add(astro1, astro2, codexL, codexR);
-
 holoGroup.add(charMesh);
 const orbMesh = new THREE.Group();
 for (let i = 0; i < 3; i++) {
@@ -183,13 +183,24 @@ fCtx.fillStyle = fGrad;
 fCtx.fillRect(0, 0, 64, 64);
 const fireflyTexture = new THREE.CanvasTexture(fireflyCanvas);
 
-const starCount = 260;
+const starCount = 240;
 const starGeo = new THREE.BufferGeometry();
 const starPos = new Float32Array(starCount * 3);
-for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 7.5;
+const starVel = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const radius = 1.15 + Math.random() * 2.15;
+  starPos[i * 3] = Math.cos(angle) * radius;
+  starPos[i * 3 + 1] = (Math.random() - 0.5) * 3.2;
+  starPos[i * 3 + 2] = Math.sin(angle) * radius;
+
+  starVel[i * 3] = (Math.random() - 0.5) * 0.018;
+  starVel[i * 3 + 1] = 0.006 + Math.random() * 0.014;
+  starVel[i * 3 + 2] = (Math.random() - 0.5) * 0.018;
+}
 starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
 const starMat = new THREE.PointsMaterial({
-  color: 0xfbbf24, size: 0.14, map: fireflyTexture,
+  color: 0xfbbf24, size: 0.068, map: fireflyTexture,
   transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending
 });
 const starField = new THREE.Points(starGeo, starMat);
@@ -224,7 +235,35 @@ function animate() {
   camera.position.z = Math.cos(camYaw) * Math.cos(camPitch) * camDist;
   camera.lookAt(0, 0.1, 0);
 
-  starField.rotation.y = t * 0.08;
+  // Fast organic firefly drift + camera lens exclusion zone (prevents giant foreground blobs)
+  const posAttr = starGeo.attributes.position;
+  for (let i = 0; i < starCount; i++) {
+    const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
+    starPos[ix] += starVel[ix] + Math.sin(t * 2.2 + i) * 0.004;
+    starPos[iy] += starVel[iy];
+    starPos[iz] += starVel[iz] + Math.cos(t * 1.9 + i) * 0.004;
+
+    if (starPos[iy] > 1.75) starPos[iy] = -1.65;
+    const rHoriz = Math.hypot(starPos[ix], starPos[iz]);
+    if (rHoriz > 3.4 || rHoriz < 0.75) {
+      const a = Math.random() * Math.PI * 2;
+      const rNew = 1.2 + Math.random() * 1.9;
+      starPos[ix] = Math.cos(a) * rNew;
+      starPos[iz] = Math.sin(a) * rNew;
+    }
+
+    // Keep spores at least 1.55 units away from the camera lens
+    const dx = starPos[ix] - camera.position.x;
+    const dy = starPos[iy] - camera.position.y;
+    const dz = starPos[iz] - camera.position.z;
+    const distToCam = Math.hypot(dx, dy, dz);
+    if (distToCam < 1.55) {
+      starPos[ix] = -starPos[ix];
+      starPos[iz] = -starPos[iz];
+    }
+  }
+  posAttr.needsUpdate = true;
+  starField.rotation.y = t * 0.22;
   starField.visible = true;
 
   baseGroup.visible = !st.porchMode;
