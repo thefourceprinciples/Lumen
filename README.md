@@ -1,6 +1,6 @@
 # Lumen — Garden Curator & 10-Archetype Observatory
 
-thefourceprinciples.github.io/Lumen
+https://thefourceprinciples.github.io/Lumen
 
 **A browser-based 3D WebGL spatial console, multi-pass research workbench, and front-end Knowledge Operating System (`KOS`) interface governed by Coherence Under Constraint (`C = O · E · H · X`).**
 
