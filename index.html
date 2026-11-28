@@ -58,7 +58,7 @@
     button:hover, button.active { background: var(--accent); color: #07100c; font-weight: 600; }
     main {
       position: relative; flex: 1; display: grid;
-      grid-template-columns: 290px 1fr 430px; gap: 14px; padding: 14px; overflow: hidden;
+      grid-template-columns: 305px 1fr 430px; gap: 14px; padding: 14px; overflow: hidden;
     }
     body.layout-roam main { display: block; padding: 0; }
     #avatar-stage {
@@ -78,7 +78,7 @@
       padding: 14px; display: flex; flex-direction: column; gap: 10px; z-index: 10; overflow-y: auto;
     }
     body.layout-roam .panel-left {
-      position: absolute; top: 14px; left: 14px; width: 290px;
+      position: absolute; top: 14px; left: 14px; width: 305px;
       max-height: calc(100vh - 84px); background: rgba(13, 27, 21, 0.76); backdrop-filter: blur(8px);
     }
     body.layout-roam .panel-right {
@@ -89,15 +89,22 @@
       font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.1em;
       color: var(--accent); font-family: var(--font-mono);
       border-bottom: 1px solid var(--border-glow); padding-bottom: 5px;
+      display: flex; justify-content: space-between; align-items: center;
     }
     .vital-row { display: flex; flex-direction: column; gap: 3px; font-size: 0.76rem; font-family: var(--font-mono); }
     .vital-head { display: flex; justify-content: space-between; }
     .bar-track { height: 6px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
     .bar-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; }
+    .braille-box {
+      font-family: var(--font-mono); font-size: 0.68rem; line-height: 1.35;
+      background: rgba(0, 0, 0, 0.48); color: var(--accent);
+      padding: 8px; border-radius: 8px; border: 1px solid var(--border-glow);
+      white-space: pre; overflow-x: auto;
+    }
     .ledger-box {
       font-family: var(--font-mono); font-size: 0.72rem; background: rgba(0,0,0,0.35);
       padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);
-      max-height: 180px; overflow-y: auto; line-height: 1.45;
+      max-height: 150px; overflow-y: auto; line-height: 1.45;
     }
     .scholar-bar {
       display: none; flex-wrap: wrap; gap: 6px; padding: 8px;
@@ -180,13 +187,26 @@
 
   <main>
     <section class="panel panel-left">
-      <h2>CUC Homeostatic Vitals</h2>
+      <h2>CUC v0.2 Homeostatic Vitals</h2>
       <div class="vital-row"><div class="vital-head"><span>O · Origin Integrity</span><span id="val-o">0.96</span></div><div class="bar-track"><div class="bar-fill" id="bar-o" style="width:96%"></div></div></div>
       <div class="vital-row"><div class="vital-head"><span>E · Expression Fidelity</span><span id="val-e">0.94</span></div><div class="bar-track"><div class="bar-fill" id="bar-e" style="width:94%"></div></div></div>
       <div class="vital-row"><div class="vital-head"><span>H · Historical Continuity</span><span id="val-h">0.92</span></div><div class="bar-track"><div class="bar-fill" id="bar-h" style="width:92%"></div></div></div>
       <div class="vital-row"><div class="vital-head"><span>X · Resonance Stability</span><span id="val-x">0.95</span></div><div class="bar-track"><div class="bar-fill" id="bar-x" style="width:95%"></div></div></div>
       <div class="vital-row"><div class="vital-head"><span>C · Composite Coherence</span><span id="val-c">0.789</span></div><div class="bar-track"><div class="bar-fill" id="bar-c" style="width:79%"></div></div></div>
-      <div class="vital-row"><div class="vital-head"><span>λ · Phase Cost</span><span id="val-l">0.12</span></div><div class="bar-track"><div class="bar-fill" id="bar-l" style="width:12%"></div></div></div>
+      <div class="vital-row"><div class="vital-head"><span>D(t) · Darkness Diagnostic</span><span id="val-d">0.083</span></div><div class="bar-track"><div class="bar-fill" id="bar-d" style="width:8%"></div></div></div>
+
+      <h2>
+        <span>BrailleStream Field</span>
+        <button style="padding:2px 6px; font-size:0.65rem;" onclick="copyBrailleField()">Copy</button>
+      </h2>
+      <pre class="braille-box" id="braille-field">┌──────────────────────────────┐
+│ LUMEN FIELD | BASE           │
+│ CORE   ⣿⣿⣿⣿⣀ C=0.789       │
+│ DARK   ⣀⣀⣀⣀⣀ D=0.083       │
+│ PROP   ⣿⣿⣿⣀⣀ Q_CUC=0.649   │
+│ SIGNAL ⠁ IDLE                │
+└──────────────────────────────┘</pre>
+
       <h2>Garden Gate &amp; Almanac Log</h2>
       <div class="ledger-box" id="ledger-display">
         [INIT] Garden Curator &amp; Farmer's Almanac online.<br/>
@@ -195,7 +215,6 @@
     </section>
 
     <div id="avatar-stage"></div>
-
     <section class="panel panel-right">
       <h2>Gardener &amp; Steward Console</h2>
       <div class="tool-strip">
@@ -235,7 +254,6 @@
       </div>
     </section>
   </main>
-
   <dialog id="settings-modal">
     <h2 style="margin-bottom:10px;">Lumen Engine Connection</h2>
     <p style="font-size:0.80rem; color:#94a3b8; line-height:1.4;">
@@ -259,7 +277,7 @@
     </div>
   </dialog>
 
-  <script src="./app.js?v=300"></script>
+  <script src="./app.js?v=310"></script>
   <script>
     function loadAvatar3D() {
       if (!window.THREE) return;
