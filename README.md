@@ -1,5 +1,7 @@
 # Lumen — Garden Curator & 10-Archetype Observatory
 
+thefourceprinciples.github.io/Lumen
+
 **A browser-based 3D WebGL spatial console, multi-pass research workbench, and front-end Knowledge Operating System (`KOS`) interface governed by Coherence Under Constraint (`C = O · E · H · X`).**
 
 Lumen solves two core failure modes of standard AI interfaces: **context-window amnesia** (losing structured insights across sessions) and **epistemic drift** (mixing casual brainstorming with verified facts). It pairs a Three.js spatial observatory and calm Botanical Garden interface with structured multi-pass reasoning, progressive data compression (**CAS Pocket Field Cards**), and two-way synchronization with **`hoshi-engine`** (*The Farmer's Almanac*).
@@ -174,4 +176,4 @@ Lumen/
 ```
 
 ## License
-MIT License
+GNU AGPLv3
