@@ -847,15 +847,57 @@ window.sendMessage = async function() {
   }
 };
 
+function renderBrailleBar(ratio, width = 5) {
+  const filled = Math.max(0, Math.min(width, Math.round(ratio * width)));
+  return '⣿'.repeat(filled) + '⣀'.repeat(width - filled);
+}
+
+function buildBrailleFieldCard() {
+  const { O, E, H, X, lambda } = state.vitals;
+  const C = O * E * H * X;
+  const interfaceMismatch = state.attachedContext ? 0.05 : 0.0;
+  const darkness = Math.max(0, 0.25 * (1 - C) + 0.25 * lambda + 0.25 * interfaceMismatch);
+  const qCuc = (C * Math.exp(-darkness)) / (1 + lambda);
+
+  let sigGlyph = '⠁ IDLE';
+  if (state.porchMode) sigGlyph = '⠃ PORCH SANCTUARY';
+  else if (state.attachedContext) sigGlyph = '⠇ EXTERNAL SOURCE';
+  else if (state.docIndex.length) sigGlyph = `⠃ ${state.docIndex.length} DOCS INDEXED`;
+
+  return [
+    '┌──────────────────────────────┐',
+    `│ LUMEN FIELD | ${state.persona.toUpperCase().padEnd(14).slice(0, 14)} │`,
+    `│ CORE   ${renderBrailleBar(C)} C=${C.toFixed(3)}       │`,
+    `│ DARK   ${renderBrailleBar(Math.min(1, darkness))} D=${darkness.toFixed(3)}       │`,
+    `│ PROP   ${renderBrailleBar(Math.min(1, qCuc))} Q_CUC=${qCuc.toFixed(3)}   │`,
+    `│ SIGNAL ${sigGlyph.padEnd(21).slice(0, 21)} │`,
+    '└──────────────────────────────┘'
+  ].join('\n');
+}
+
+window.copyBrailleField = function() {
+  const card = buildBrailleFieldCard();
+  navigator.clipboard.writeText(card);
+  logLedger('Copied BrailleStream CUC v0.2 field card.');
+};
+
 function updateVitalsUI() {
   const { O, E, H, X, lambda } = state.vitals;
   const C = O * E * H * X;
+  const darkness = Math.max(0, 0.25 * (1 - C) + 0.25 * lambda);
   document.getElementById('val-o').textContent = O.toFixed(2); document.getElementById('bar-o').style.width = (O * 100) + '%';
   document.getElementById('val-e').textContent = E.toFixed(2); document.getElementById('bar-e').style.width = (E * 100) + '%';
   document.getElementById('val-h').textContent = H.toFixed(2); document.getElementById('bar-h').style.width = (H * 100) + '%';
   document.getElementById('val-x').textContent = X.toFixed(2); document.getElementById('bar-x').style.width = (X * 100) + '%';
   document.getElementById('val-c').textContent = C.toFixed(3); document.getElementById('bar-c').style.width = (C * 100) + '%';
-  document.getElementById('val-l').textContent = lambda.toFixed(2); document.getElementById('bar-l').style.width = (lambda * 100) + '%';
+  const valD = document.getElementById('val-d');
+  const barD = document.getElementById('bar-d');
+  if (valD && barD) {
+    valD.textContent = darkness.toFixed(3);
+    barD.style.width = Math.min(100, darkness * 100) + '%';
+  }
+  const brailleEl = document.getElementById('braille-field');
+  if (brailleEl) brailleEl.textContent = buildBrailleFieldCard();
   updateBadge();
 }
 
