@@ -148,7 +148,6 @@ async function bootstrapAlmanacAndDocs(forceRefresh = false) {
     }
   } catch (_) {}
 }
-
 function retrieveRelevantCanon(queryText, personaKey) {
   const archDocs = (ARCHETYPES[personaKey] && ARCHETYPES[personaKey].docs) || ['CANON_CORE.md'];
   if (!state.docIndex.length) return state.canonSpine;
@@ -163,6 +162,7 @@ function retrieveRelevantCanon(queryText, personaKey) {
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, 3).map(s => s.doc.excerpt).join('\n\n---\n\n').slice(0, 3400);
 }
+
 async function fetchCoherenceEvidence(queryText, personaKey) {
   if (state.attachedContext || state.porchMode) return '';
   if (!['apothecary', 'engineer', 'detective', 'scholar'].includes(personaKey)) return '';
@@ -283,6 +283,7 @@ function logLedger(entry) {
   box.innerHTML += '<br/>[' + ts + '] ' + entry;
   box.scrollTop = box.scrollHeight;
 }
+
 function escapeHTML(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -442,7 +443,7 @@ window.openAlmanacViewer = async function() {
       const remoteSeeds = await aRes.json();
       if (remoteSeeds.length) {
         seeds = remoteSeeds;
-        sourceLabel = 'LIVE HOSHI ENGINE VAULT (http://127.0.0)';
+        sourceLabel = 'LIVE HOSHI ENGINE VAULT (http://127.0.0.1:5001)';
       }
     }
     if (mRes.ok) recentMemories = (await mRes.json()).slice(0, 8);
@@ -846,7 +847,6 @@ window.sendMessage = async function() {
     if (!state.porchMode) window.setForm('character');
   }
 };
-
 function renderBrailleBar(ratio, width = 5) {
   const filled = Math.max(0, Math.min(width, Math.round(ratio * width)));
   return '⣿'.repeat(filled) + '⣀'.repeat(width - filled);
